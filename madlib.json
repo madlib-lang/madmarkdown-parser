@@ -1,0 +1,8 @@
+{
+  "name": "madmarkdown-parser",
+  "version": "0.0.1",
+  "main": "src/Main.mad",
+  "dependencies": {
+    "MadParser": "https://github.com/madlib-lang/madparser/archive/refs/heads/master.zip"
+  }
+}

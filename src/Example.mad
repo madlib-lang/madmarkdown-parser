@@ -1,0 +1,47 @@
+import IO from "IO"
+import P from "MadParser"
+import { parseMarkdown } from "./Main"
+
+mdFixture = `
+## This \`is\` a **with bold** *tiltle*!
+# This is a tiltle!
+
+>*I* am a blockquote * not italic*
+
+\`\`\`javascript
+some code is in there
+
+
+\`\`\`
+
+
+[http://some-link11.com]() [http://some-link.com](name)
+   sdf     ![alt text](http://image-url.com)
+And some paragraph1
+sdf \`TCHOU\` **and BIM** and *italic again*
+
+> with another blockquote
+same same
+> oups
+\`\`\`javascript
+some code is in there
+
+* This is not a list
+* because it's in a code block!
++ because it's in a code block!
+- because it's in a code block!
+
+\`\`\`
+
+* list YO
+* second item
++ third
+- fourth ! + some chars $ that [] are @ \`random\` with a [http://someplace.com](link)
+
+
+**CRAZY BOLD ALSO BOLD !&%$§[]**+#
+
+`
+
+
+parseMarkdown(mdFixture) |> IO.inspect
