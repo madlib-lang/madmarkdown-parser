@@ -95,12 +95,12 @@ link = pipe(
   map(Link),
   ap($, between(
     P.char("("),
-    pipe(P.many, map(reduce(mappend, "")))(P.notOneOf([")", "\n"])),
+    pipe(P.many, map(reduce(mappend, "")))(linkCharacter),
     P.char(")")
   ))
 )(between(
   P.char("["),
-  pipe(P.many, map(reduce(mappend, "")))(linkCharacter),
+  pipe(P.many, map(reduce(mappend, "")))(P.notOneOf(["]", "\n"])),
   P.char("]")
 ))
 
@@ -126,18 +126,14 @@ textTerminals = P.choice([
   map(always(""), inlineCode),
   map(always(""), image),
   map(always(""), link),
+  map(always(""), P.eof),
   P.char("\n")
 ])
 
 text :: P.Parser ContentPart
 text = pipe(
   P.someTill($, P.lookAhead(textTerminals)),
-  // (cp) => alt(
-  //   P.someTill(cp, P.lookAhead(textTerminals)),
-  //   P.some(cp)
-  // ),
   map(pipe(reduce(mappend, ""), Text))
-// )(contentCharacter)
 )(P.notChar("\n"))
 
 lineReturn :: P.Parser ContentPart
@@ -212,7 +208,11 @@ blockquote = pipe(
 paragraph :: P.Parser Block
 paragraph = pipe(
   map(Paragraph),
-  apL($, P.choice([doubleReturnTerminal, P.lookAhead(P.string("\n```")), P.lookAhead(P.string("\n>"))]))
+  apL($, P.choice([
+    doubleReturnTerminal,
+    P.lookAhead(P.string("\n```")),
+    P.lookAhead(P.string("\n>"))
+  ]))
 )(contentWithLineReturn(P.choice([P.char("\n"), P.string("```"), P.char(">")])))
 
 

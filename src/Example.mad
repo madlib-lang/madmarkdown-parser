@@ -15,7 +15,7 @@ some code is in there
 \`\`\`
 
 
-[http://some-link11.com]() [http://some-link.com](name)
+[link](http://some-link11.com) [name](http://some-link.com)
    sdf     ![alt text](http://image-url.com)
 And some paragraph1
 sdf \`TCHOU\` **and BIM** and *italic again*
@@ -36,7 +36,7 @@ some code is in there
 * list YO
 * second item
 + third
-- fourth ! + some chars $ that [] are @ \`random\` with a [http://someplace.com](link)
+- fourth ! + some chars $ that [] are @ \`random\` with a [link](http://someplace.com)
 
 
 **CRAZY BOLD ALSO BOLD !&%$§[]**+#
