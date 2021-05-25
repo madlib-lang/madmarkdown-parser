@@ -1,7 +1,8 @@
 import { dropWhile, filter, reduce } from "List"
 import { always, equals, identity } from "Function"
 import { Just, Nothing } from "Maybe"
-import { mapLeft, Either } from "Either"
+import type { Either } from "Either"
+import { mapLeft } from "Either"
 import { mapL } from "Functor"
 import { apL } from "Applicative"
 import P from "MadParser"
@@ -69,7 +70,7 @@ bold :: P.Parser ContentPart
 bold = pipe(
   mapL(Bold),
   ap($, pipe(
-    P.someTill($, P.lookAhead(P.string("**"))),
+    (a) => P.someTill(a, P.lookAhead(P.string("**"))),
     map(reduce(mappend, ""))
   )(P.notChar("\n"))),
   apL($, P.string("**"))
@@ -205,28 +206,37 @@ blockquote = pipe(
   ]))
 )(alt(P.symbol(">"), P.string(">")))
 
-paragraph :: P.Parser Block
-paragraph = pipe(
-  map(Paragraph),
-  apL($, P.choice([
-    doubleReturnTerminal,
-    P.lookAhead(P.string("\n```")),
-    P.lookAhead(P.string("\n>"))
-  ]))
-)(contentWithLineReturn(P.choice([P.char("\n"), P.string("```"), P.char(">")])))
 
 
+listItemStart = map(always(""), apL(P.many(P.char(" ")), apL(P.oneOf(["*", "-", "+"]), P.some(P.char(" ")))))
 
 unorderedListItem :: P.Parser Content
 unorderedListItem = pipe(
   chain(always(apL(content, singleReturnTerminal)))
-)(apL(P.oneOf(["*", "-", "+"]), P.some(P.char(" "))))
+)(listItemStart)
 
 unorderedList :: P.Parser Block
 unorderedList = pipe(
   P.some,
   map(UnorderedList)
 )(unorderedListItem)
+
+
+
+paragraph :: P.Parser Block
+paragraph = pipe(
+  map(Paragraph),
+  apL($, P.choice([
+    doubleReturnTerminal,
+    P.lookAhead(P.string("\n```")),
+    P.lookAhead(P.string("\n>")),
+    P.lookAhead(apL(P.char("\n"), listItemStart))
+  ]))
+)(contentWithLineReturn(P.choice([listItemStart, P.char("\n"), P.string("```"), P.char(">")])))
+
+
+
+
 
 block :: P.Parser Block
 block = P.choice([

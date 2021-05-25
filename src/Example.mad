@@ -1,6 +1,6 @@
 import IO from "IO"
-import P from "MadParser"
 import { parseMarkdown } from "./Main"
+
 
 mdFixture = `
 ## This \`is\` a **with bold** *tiltle*!
@@ -33,6 +33,7 @@ some code is in there
 
 \`\`\`
 
+here are the items:
 * list YO
 * second item
 + third
@@ -44,4 +45,21 @@ some code is in there
 `
 
 
+// parseMarkdown(mdFixture) |> IO.inspect
+
+
+
+// mdBig = repeat(1500, mdFixture)
+// mdBig = repeat(15000, mdFixture)
+// mdBig2 = repeat(10000, "Some markdown title")
+
+#-console.time("parse")-#
+
+// IO.log(len(mdBig))
+
+// P.runParser(P.many(P.anyChar), mdBig)
+// P.runParser(P.many(P.choice([P.anyChar])), mdBig)
 parseMarkdown(mdFixture) |> IO.inspect
+
+#-console.timeEnd("parse")-#
+
