@@ -50,18 +50,30 @@ contentCharacter = P.choice([
   P.char(" ")
 ])
 
+// https://stackoverflow.com/questions/1547899/which-characters-make-a-url-invalid
 linkCharacter :: P.Parser String
 linkCharacter = P.choice([
   P.letter,
   P.digit,
+  P.char("!"),
+  P.char("#"),
+  P.char("$"),
+  P.char("%"),
+  P.char("&"),
+  P.char("'"),
+  P.char("*"),
+  P.char("+"),
+  P.char(","),
+  P.char("-"),
+  P.char("."),
   P.char("/"),
   P.char(":"),
-  P.char("?"),
-  P.char("."),
-  P.char("-"),
-  P.char("_"),
+  P.char(";"),
   P.char("="),
-  P.char("#")
+  P.char("?"),
+  P.char("@"),
+  P.char("_"),
+  P.char("~")
 ])
 
 
