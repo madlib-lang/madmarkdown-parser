@@ -2,3 +2,4 @@ build
 .run
 madlib_modules
 node_modules
+.module_cache
