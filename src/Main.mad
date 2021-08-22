@@ -9,27 +9,27 @@ import P from "MadParser"
 
 
 export type ContentPart
-  = Text String
-  | Bold String
-  | Italic String
-  | InlineCode String
-  | Link String String
-  | Image String String
+  = Text(String)
+  | Bold(String)
+  | Italic(String)
+  | InlineCode(String)
+  | Link(String, String)
+  | Image(String, String)
   | LineReturn
 
 export alias Content = List ContentPart
 
 export type Block
-  = H1 Content
-  | H2 Content
-  | H3 Content
-  | H4 Content
-  | H5 Content
-  | H6 Content
-  | Paragraph Content
-  | Blockquote Content
-  | Code String String
-  | UnorderedList (List Content)
+  = H1(Content)
+  | H2(Content)
+  | H3(Content)
+  | H4(Content)
+  | H5(Content)
+  | H6(Content)
+  | Paragraph(Content)
+  | Blockquote(Content)
+  | Code(String, String)
+  | UnorderedList(List Content)
 
 export alias Markdown = List Block
 
@@ -152,10 +152,10 @@ lineReturnExceptBefore = (before) => pipe(
   mapL(identity),
   ap($, alt(map(always(Just(())), before), pure(Nothing))),
   P.lookAhead,
-  chain(where
-    is Just _ : empty
-    is Nothing: lineReturn
-  )
+  chain(where {
+    Just(_) => empty
+    Nothing => lineReturn
+  })
 )(lineReturn)
 
 contentWithLineReturn :: P.Parser a -> P.Parser Content
@@ -258,11 +258,11 @@ markdownParser = pipe(
   P.choice,
   P.many,
   map(pipe(
-    filter(where
-      is Just x : true
-      is Nothing: false
-    ),
-    map(where is Just x: x)
+    filter(where {
+      Just(x) => true
+      Nothing => false
+    }),
+    map(where { Just(x) => x })
   ))
 )([map(always(Nothing), P.spaces), map(Just, block)])
 

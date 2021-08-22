@@ -1,0 +1,38 @@
+{
+  "buildHash": "5d5fc792301f016df0ce36445a772a26",
+  "versionHash": "25e64aa754c310d45c1e084d574c1bb0",
+  "api": {
+    "apiNames": {
+      "parseMarkdown": "String -> Either String (List Block)"
+    },
+    "apiInstances": [],
+    "apiAliases": {
+      "Markdown": "(List Block)",
+      "Content": "(List ContentPart)"
+    },
+    "apiTypes": {
+      "Block": [
+        "H1 Content",
+        "H2 Content",
+        "H3 Content",
+        "H4 Content",
+        "H5 Content",
+        "H6 Content",
+        "Paragraph Content",
+        "Blockquote Content",
+        "Code String String",
+        "UnorderedList (List Content)"
+      ],
+      "ContentPart": [
+        "Text String",
+        "Bold String",
+        "Italic String",
+        "InlineCode String",
+        "Link String String",
+        "Image String String",
+        "LineReturn"
+      ]
+    },
+    "apiInterfaces": {}
+  }
+}
