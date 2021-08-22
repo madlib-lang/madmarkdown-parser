@@ -1,13 +1,16 @@
 {
   "name": "MadMarkdownParser",
-  "version": "0.0.2",
+  "version": "0.0.1",
+  "madlibVersion": "0.10.0",
   "main": "src/Main.mad",
-  "madlibVersion": "0.9.0",
-  "dependencies": [{
-    "url": "https://github.com/madlib-lang/madparser/archive/refs/heads/feature/update-for-madlib-0.10.0.zip",
-    "description": "MadParser"
-  }],
   "importAliases": {
     ".": "src"
-  }
+  },
+  "dependencies": [
+    {
+      "minVersion": "0.0.4",
+      "url": "https://github.com/madlib-lang/madparser/archive/refs/tags/v0.0.4.zip",
+      "description": "MadParser"
+    }
+  ]
 }
