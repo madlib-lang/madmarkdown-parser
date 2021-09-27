@@ -1,6 +1,6 @@
 {
-  "buildHash": "d71a8a37a4c09caf40ae5c551a8b9db7",
-  "versionHash": "25e64aa754c310d45c1e084d574c1bb0",
+  "buildHash": "a0a3f117bc4a04adaec016ceeac5a5b4",
+  "versionHash": "fbacc30a1f288ebf360ad2de66710082",
   "api": {
     "apiNames": {
       "parseMarkdown": "String -> Either String (List Block)"
