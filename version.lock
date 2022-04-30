@@ -1,14 +1,13 @@
 {
-  "buildHash": "a0a3f117bc4a04adaec016ceeac5a5b4",
-  "versionHash": "fbacc30a1f288ebf360ad2de66710082",
   "api": {
-    "apiNames": {
-      "parseMarkdown": "String -> Either String (List Block)"
+    "apiAliases": {
+      "Content": "(List ContentPart)",
+      "Markdown": "(List Block)"
     },
     "apiInstances": [],
-    "apiAliases": {
-      "Markdown": "(List Block)",
-      "Content": "(List ContentPart)"
+    "apiInterfaces": {},
+    "apiNames": {
+      "parseMarkdown": "String -> Either String (List Block)"
     },
     "apiTypes": {
       "Block": [
@@ -32,7 +31,8 @@
         "Image String String",
         "LineReturn"
       ]
-    },
-    "apiInterfaces": {}
-  }
+    }
+  },
+  "buildHash": "e1f3048c1f97de9540efb556aa817949",
+  "versionHash": "7f76975313afde67f0b4efca59761e8a"
 }
