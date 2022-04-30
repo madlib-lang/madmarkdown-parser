@@ -1,11 +1,12 @@
-import { dropWhile, filter, reduce } from "List"
+import { dropWhile, filter } from "List"
 import { always, equals, identity } from "Function"
 import { Just, Nothing } from "Maybe"
 import type { Either } from "Either"
 import { mapLeft } from "Either"
 import { mapL } from "Functor"
 import { apL } from "Applicative"
-import P from "MadParser"
+import P from "Parse"
+import String from "String"
 
 
 export type ContentPart
@@ -41,27 +42,39 @@ between = (start, mid, end) => pipe(
   apL($, end)
 )(start)
 
-contentCharacter :: P.Parser String
+contentCharacter :: P.Parser Char
 contentCharacter = P.choice([
   P.letter,
   P.digit,
-  P.char("!"),
-  P.char("?"),
-  P.char(" ")
+  P.char('!'),
+  P.char('?'),
+  P.char(' ')
 ])
 
-linkCharacter :: P.Parser String
+// https://stackoverflow.com/questions/1547899/which-characters-make-a-url-invalid
+linkCharacter :: P.Parser Char
 linkCharacter = P.choice([
   P.letter,
   P.digit,
-  P.char("/"),
-  P.char(":"),
-  P.char("?"),
-  P.char("."),
-  P.char("-"),
-  P.char("_"),
-  P.char("="),
-  P.char("#")
+  P.char('!'),
+  P.char('#'),
+  P.char('$'),
+  P.char('%'),
+  P.char('&'),
+  P.char('\''),
+  P.char('*'),
+  P.char('+'),
+  P.char(','),
+  P.char('-'),
+  P.char('.'),
+  P.char('/'),
+  P.char(':'),
+  P.char(';'),
+  P.char('='),
+  P.char('?'),
+  P.char('@'),
+  P.char('_'),
+  P.char('~')
 ])
 
 
@@ -71,54 +84,54 @@ bold = pipe(
   mapL(Bold),
   ap($, pipe(
     (a) => P.someTill(a, P.lookAhead(P.string("**"))),
-    map(reduce(mappend, ""))
-  )(P.notChar("\n"))),
+    map(String.fromList)
+  )(P.notChar('\n'))),
   apL($, P.string("**"))
 )(P.string("**"))
 
 italic :: P.Parser ContentPart
 italic = pipe(
-  mapL((a, b) => Italic(a ++ b)),
-  ap($, P.notChar(" ")),
-  ap($, pipe(P.many, map(reduce(mappend, "")))(P.notOneOf(["*", "\n"]))),
-  apL($, P.char("*"))
-)(P.char("*"))
+  mapL((a, b) => Italic(String.pushChar(a, b))),
+  ap($, P.notChar(' ')),
+  ap($, pipe(P.many, map(String.fromList))(P.notOneOf(['*', '\n']))),
+  apL($, P.char('*'))
+)(P.char('*'))
 
 inlineCode :: P.Parser ContentPart
 inlineCode = pipe(
   mapL(InlineCode),
-  ap($, pipe(P.many, map(reduce(mappend, "")))(P.notOneOf(["`", "\n"]))),
-  apL($, P.char("`"))
-)(P.char("`"))
+  ap($, pipe(P.many, map(String.fromList))(P.notOneOf(['`', '\n']))),
+  apL($, P.char('`'))
+)(P.char('`'))
 
 link :: P.Parser ContentPart
 link = pipe(
   map(Link),
   ap($, between(
-    P.char("("),
-    pipe(P.many, map(reduce(mappend, "")))(linkCharacter),
-    P.char(")")
+    P.char('('),
+    pipe(P.many, map(String.fromList))(linkCharacter),
+    P.char(')')
   ))
 )(between(
-  P.char("["),
-  pipe(P.many, map(reduce(mappend, "")))(P.notOneOf(["]", "\n"])),
-  P.char("]")
+  P.char('['),
+  pipe(P.many, map(String.fromList))(P.notOneOf([']', '\n'])),
+  P.char(']')
 ))
 
 image :: P.Parser ContentPart
 image = pipe(
   mapL(Image),
   ap($, between(
-    P.char("["),
-    pipe(P.many, map(reduce(mappend, "")))(P.notOneOf(["]", "\n"])),
-    P.char("]")
+    P.char('['),
+    pipe(P.many, map(String.fromList))(P.notOneOf([']', '\n'])),
+    P.char(']')
   )),
   ap($, between(
-    P.char("("),
-    pipe(P.many, map(reduce(mappend, "")))(linkCharacter),
-    P.char(")")
+    P.char('('),
+    pipe(P.many, map(String.fromList))(linkCharacter),
+    P.char(')')
   ))
-)(P.char("!"))
+)(P.char('!'))
 
 textTerminals :: P.Parser String
 textTerminals = P.choice([
@@ -128,17 +141,17 @@ textTerminals = P.choice([
   map(always(""), image),
   map(always(""), link),
   map(always(""), P.eof),
-  P.char("\n")
+  P.string("\n")
 ])
 
 text :: P.Parser ContentPart
 text = pipe(
   P.someTill($, P.lookAhead(textTerminals)),
-  map(pipe(reduce(mappend, ""), Text))
-)(P.notChar("\n"))
+  map(pipe(String.fromList, Text))
+)(P.notChar('\n'))
 
 lineReturn :: P.Parser ContentPart
-lineReturn = map(always(LineReturn), P.char("\n"))
+lineReturn = map(always(LineReturn), P.char('\n'))
 
 content :: P.Parser Content
 content = pipe(
@@ -150,11 +163,14 @@ content = pipe(
 lineReturnExceptBefore :: P.Parser a -> P.Parser ContentPart
 lineReturnExceptBefore = (before) => pipe(
   mapL(identity),
-  ap($, alt(map(always(Just(())), before), pure(Nothing))),
+  ap($, alt(map(always(Just({})), before), pure(Nothing))),
   P.lookAhead,
   chain(where {
-    Just(_) => empty
-    Nothing => lineReturn
+    Just(_) =>
+      aempty
+
+    Nothing =>
+      lineReturn
   })
 )(lineReturn)
 
@@ -174,21 +190,21 @@ heading = (constructor) => pipe(
 )
 
 singleReturnTerminal :: P.Parser String
-singleReturnTerminal = alt(P.char("\n"), map(always(""), P.eof))
+singleReturnTerminal = alt(P.string("\n"), map(always(""), P.eof))
 
 doubleReturnTerminal :: P.Parser String
 doubleReturnTerminal = P.choice([
   P.string("\n\n"),
   map(always(""), P.eof),
-  pipe(ap(pure((_, __) => "")), ap($, P.eof))(P.char("\n"))
+  pipe(ap(pure((_, _) => "")), ap($, P.eof))(P.char('\n'))
 ])
 
 code :: P.Parser Block
 code = pipe(
   mapL((lang, c) => Code(lang, c)),
-  ap($, alt(P.letters, pure(""))),
-  apL($, P.char("\n")),
-  ap($, map(reduce(mappend, ""), P.manyTill(P.anyChar, P.lookAhead(P.string("\n```"))))),
+  ap($, alt(map(String.fromList, P.letters), pure(""))),
+  apL($, P.char('\n')),
+  ap($, map(String.fromList, P.manyTill(P.anyChar, P.lookAhead(P.string("\n```"))))),
   apL($, P.choice([
     map((_) => "", apL(P.string("\n```"), P.eof)),
     P.string("\n```\n")
@@ -198,7 +214,7 @@ code = pipe(
 blockquote :: P.Parser Block
 blockquote = pipe(
   mapL(Blockquote),
-  ap($, contentWithLineReturn(P.choice([P.char("\n"), P.string("```"), P.char(">")]))),
+  ap($, contentWithLineReturn(P.choice([P.string("\n"), P.string("```"), P.string(">")]))),
   apL($, P.choice([
     doubleReturnTerminal,
     P.lookAhead(P.string("\n```")),
@@ -208,7 +224,7 @@ blockquote = pipe(
 
 
 
-listItemStart = map(always(""), apL(P.many(P.char(" ")), apL(P.oneOf(["*", "-", "+"]), P.some(P.char(" ")))))
+listItemStart = map(always(""), apL(P.many(P.char(' ')), apL(P.oneOf(['*', '-', '+']), P.some(P.char(' ')))))
 
 unorderedListItem :: P.Parser Content
 unorderedListItem = pipe(
@@ -230,9 +246,9 @@ paragraph = pipe(
     doubleReturnTerminal,
     P.lookAhead(P.string("\n```")),
     P.lookAhead(P.string("\n>")),
-    P.lookAhead(apL(P.char("\n"), listItemStart))
+    P.lookAhead(apL(P.string("\n"), listItemStart))
   ]))
-)(contentWithLineReturn(P.choice([listItemStart, P.char("\n"), P.string("```"), P.char(">")])))
+)(contentWithLineReturn(P.choice([listItemStart, P.string("\n"), P.string("```"), P.string(">")])))
 
 
 
@@ -259,8 +275,11 @@ markdownParser = pipe(
   P.many,
   map(pipe(
     filter(where {
-      Just(x) => true
-      Nothing => false
+      Just(x) =>
+        true
+
+      Nothing =>
+        false
     }),
     map(where { Just(x) => x })
   ))

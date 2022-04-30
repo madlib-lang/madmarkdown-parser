@@ -45,21 +45,16 @@ here are the items:
 `
 
 
-// parseMarkdown(mdFixture) |> IO.inspect
-
-
-
 // mdBig = repeat(1500, mdFixture)
 // mdBig = repeat(15000, mdFixture)
 // mdBig2 = repeat(10000, "Some markdown title")
-
-#-console.time("parse")-#
 
 // IO.log(len(mdBig))
 
 // P.runParser(P.many(P.anyChar), mdBig)
 // P.runParser(P.many(P.choice([P.anyChar])), mdBig)
-parseMarkdown(mdFixture) |> IO.inspect
 
-#-console.timeEnd("parse")-#
+
+parseMarkdown(mdFixture) |> IO.log
+
 
