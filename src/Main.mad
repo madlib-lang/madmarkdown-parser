@@ -1,4 +1,4 @@
-import { dropWhile, filter } from "List"
+import { dropWhile, mapMaybe } from "List"
 import { always, equals, identity } from "Function"
 import { Just, Nothing } from "Maybe"
 import type { Either } from "Either"
@@ -42,14 +42,15 @@ between = (start, mid, end) => pipe(
   apL($, end)
 )(start)
 
-contentCharacter :: P.Parser Char
-contentCharacter = P.choice([
-  P.letter,
-  P.digit,
-  P.char('!'),
-  P.char('?'),
-  P.char(' ')
-])
+
+// contentCharacter :: P.Parser Char
+// contentCharacter = P.choice([
+//   P.letter,
+//   P.digit,
+//   P.char('!'),
+//   P.char('?'),
+//   P.char(' ')
+// ])
 
 // https://stackoverflow.com/questions/1547899/which-characters-make-a-url-invalid
 linkCharacter :: P.Parser Char
@@ -89,13 +90,21 @@ bold = pipe(
   apL($, P.string("**"))
 )(P.string("**"))
 
+
 italic :: P.Parser ContentPart
-italic = pipe(
-  mapL((a, b) => Italic(String.pushChar(a, b))),
-  ap($, P.notChar(' ')),
-  ap($, pipe(P.many, map(String.fromList))(P.notOneOf(['*', '\n']))),
-  apL($, P.char('*'))
-)(P.char('*'))
+italic = do {
+  _ <- P.char('*')
+  firstChar <- P.notChar(' ')
+  nextChars <- P.many(P.notOneOf(['*', '\n']))
+  _ <- P.char('*')
+
+  return pipe(
+    String.fromList,
+    String.pushChar(firstChar),
+    Italic,
+    of
+  )([firstChar, ...nextChars])
+}
 
 inlineCode :: P.Parser ContentPart
 inlineCode = pipe(
@@ -273,16 +282,7 @@ markdownParser :: P.Parser Markdown
 markdownParser = pipe(
   P.choice,
   P.many,
-  map(pipe(
-    filter(where {
-      Just(x) =>
-        true
-
-      Nothing =>
-        false
-    }),
-    map(where { Just(x) => x })
-  ))
+  map(mapMaybe((x) => x)),
 )([map(always(Nothing), P.spaces), map(Just, block)])
 
 

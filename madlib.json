@@ -1,7 +1,7 @@
 {
   "name": "MadMarkdownParser",
-  "version": "0.0.3",
-  "madlibVersion": "0.12.0",
+  "version": "0.0.4",
+  "madlibVersion": "0.21.1",
   "main": "src/Main.mad",
   "importAliases": {
     ".": "src"

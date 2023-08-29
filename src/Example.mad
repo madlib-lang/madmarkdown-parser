@@ -54,7 +54,7 @@ here are the items:
 // P.runParser(P.many(P.anyChar), mdBig)
 // P.runParser(P.many(P.choice([P.anyChar])), mdBig)
 
-
-parseMarkdown(mdFixture) |> IO.log
-
-
+main = () => {
+  parseMarkdown(mdFixture) |> IO.log
+  parseMarkdown(mdFixture) |> IO.cLog
+}
