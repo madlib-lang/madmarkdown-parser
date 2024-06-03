@@ -1,0 +1,99 @@
+import type { Wish } from "Wish"
+
+import { Left, Right } from "Either"
+import File from "File"
+import { always } from "Function"
+import Parse from "Parse"
+import Test from "Test"
+import Wish from "Wish"
+
+import {
+  H1,
+  Italic,
+  Link,
+  Text,
+  between,
+  block,
+  blockquote,
+  bold,
+  code,
+  content,
+  contentWithLineReturn,
+  doubleReturnTerminal,
+  heading,
+  image,
+  inlineCode,
+  italic,
+  lineReturn,
+  lineReturnExceptBefore,
+  link,
+  linkCharacter,
+  listItemStart,
+  markdownParser,
+  paragraph,
+  parseMarkdown,
+  singleReturnTerminal,
+  text,
+  textTerminals,
+  unorderedList,
+  unorderedListItem,
+} from "./Main"
+
+
+
+// export type Parser a = Parser(String -> Location -> #[List #[a, String], Location])
+
+// testParser :: Parse.Parser a -> String -> b -> Wish Test.AssertionError {}
+testParser = (parser, toParse, expected) => pipe(
+  Parse.runParser(parser),
+  where {
+    Left(Parse.Error(Parse.Loc(a, b, c))) =>
+      Wish.bad(Test.Error(`Error during parsing ${show(a)} ${show(b)} ${show(c)}`))
+
+    Right(res) =>
+      Test.assertEquals(res, expected)
+  },
+)(toParse)
+
+// Test.test(
+//   "linkCharacter",
+//   () => do {
+//     return testParser(linkCharacter, "a1!#$%&'*+,-./:;=?@_~", '~')
+//   },
+// )
+
+Test.test(
+  "block",
+  () => do {
+    return testParser(block, "# hey", H1([Text("hey")]))
+  },
+)
+
+Test.test(
+  "italic",
+  () => do {
+    return testParser(italic, "*firenze*", Italic("firenze"))
+  },
+)
+
+Test.test(
+  "link",
+  () => do {
+    return testParser(
+      link,
+      "[madlib](https://madlib.space)",
+      Link("madlib", "https://madlib.space"),
+    )
+  },
+)
+
+Test.test(
+  "markdownParser",
+  () => do {
+    return pipe(
+      File.read,
+      Wish.mapRej(always(Test.Error("barf"))),
+      chain((FIXTURE) => testParser(markdownParser, FIXTURE, [])),
+    )("./FIXTURE.md")
+  },
+)

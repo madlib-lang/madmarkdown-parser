@@ -17,6 +17,7 @@ export type ContentPart
   | Italic(String)
   | InlineCode(String)
   | Link(String, String)
+  | InternalLink(String, String)
   | Image(String, String)
   | LineReturn
 
@@ -37,7 +38,7 @@ export type Block
 export alias Markdown = List Block
 
 between :: P.Parser a -> P.Parser b -> P.Parser c -> P.Parser b
-between = (start, mid, end) => pipe(
+export between = (start, mid, end) => pipe(
   mapL(identity),
   ap($, mid),
   apL($, end),
@@ -45,7 +46,7 @@ between = (start, mid, end) => pipe(
 
 // https://stackoverflow.com/questions/1547899/which-characters-make-a-url-invalid
 linkCharacter :: P.Parser Char
-linkCharacter = P.choice([
+export linkCharacter = P.choice([
   P.letter,
   P.digit,
   P.char('!'),
@@ -69,9 +70,9 @@ linkCharacter = P.choice([
   P.char('~'),
 ])
 
-
+// TODO: support either __bold__ or **bold**
 bold :: P.Parser ContentPart
-bold = pipe(
+export bold = pipe(
   mapL(Bold),
   ap(
     $,
@@ -83,8 +84,9 @@ bold = pipe(
   apL($, P.string("**")),
 )(P.string("**"))
 
+// TODO: support either _italic_ or *italic*
 italic :: P.Parser ContentPart
-italic = do {
+export italic = do {
   _ <- P.char('*')
   firstChar <- P.notChar(' ')
   nextChars <- P.many(P.notOneOf(['*', '\n']))
@@ -92,14 +94,13 @@ italic = do {
 
   return pipe(
     String.fromList,
-    String.prependChar(firstChar),
     Italic,
     of,
   )([firstChar, ...nextChars])
 }
 
 inlineCode :: P.Parser ContentPart
-inlineCode = pipe(
+export inlineCode = pipe(
   mapL(InlineCode),
   ap(
     $,
@@ -112,7 +113,7 @@ inlineCode = pipe(
 )(P.char('`'))
 
 link :: P.Parser ContentPart
-link = pipe(
+export link = pipe(
   map(Link),
   ap(
     $,
@@ -136,8 +137,12 @@ link = pipe(
   ),
 )
 
+// wikiLink :: P.Parse ContentPart
+// wikiLink = pipe(
+// )
+
 image :: P.Parser ContentPart
-image = pipe(
+export image = pipe(
   mapL(Image),
   ap(
     $,
@@ -164,7 +169,7 @@ image = pipe(
 )(P.char('!'))
 
 textTerminals :: P.Parser String
-textTerminals = P.choice([
+export textTerminals = P.choice([
   map(always(""), bold),
   map(always(""), italic),
   map(always(""), inlineCode),
@@ -175,7 +180,7 @@ textTerminals = P.choice([
 ])
 
 text :: P.Parser ContentPart
-text = pipe(
+export text = pipe(
   P.someTill($, P.lookAhead(textTerminals)),
   map(
     pipe(
@@ -186,16 +191,16 @@ text = pipe(
 )(P.notChar('\n'))
 
 lineReturn :: P.Parser ContentPart
-lineReturn = map(always(LineReturn), P.char('\n'))
+export lineReturn = map(always(LineReturn), P.char('\n'))
 
 content :: P.Parser Content
-content = pipe(
+export content = pipe(
   P.choice,
   P.many,
 )([bold, italic, inlineCode, image, link, text])
 
 lineReturnExceptBefore :: P.Parser a -> P.Parser ContentPart
-lineReturnExceptBefore = (before) => pipe(
+export lineReturnExceptBefore = (before) => pipe(
   mapL(identity),
   ap($, alt(map(always(Just({})), before), pure(Nothing))),
   P.lookAhead,
@@ -211,14 +216,14 @@ lineReturnExceptBefore = (before) => pipe(
 )(lineReturn)
 
 contentWithLineReturn :: P.Parser a -> P.Parser Content
-contentWithLineReturn = (delimiter) => pipe(
+export contentWithLineReturn = (delimiter) => pipe(
   P.choice,
   P.some,
   map(dropWhile(equals(LineReturn))),
 )([bold, italic, inlineCode, image, link, text, lineReturnExceptBefore(delimiter)])
 
 heading :: (Content -> Block) -> String -> P.Parser Block
-heading = (constructor) => pipe(
+export heading = (constructor) => pipe(
   P.symbol,
   mapL(constructor),
   ap($, content),
@@ -226,10 +231,10 @@ heading = (constructor) => pipe(
 )
 
 singleReturnTerminal :: P.Parser String
-singleReturnTerminal = alt(P.string("\n"), map(always(""), P.eof))
+export singleReturnTerminal = alt(P.string("\n"), map(always(""), P.eof))
 
 doubleReturnTerminal :: P.Parser String
-doubleReturnTerminal = P.choice([
+export doubleReturnTerminal = P.choice([
   P.string("\n\n"),
   map(always(""), P.eof),
   pipe(
@@ -239,7 +244,7 @@ doubleReturnTerminal = P.choice([
 ])
 
 code :: P.Parser Block
-code = pipe(
+export code = pipe(
   mapL((lang, c) => Code(lang, c)),
   ap($, alt(map(String.fromList, P.letters), pure(""))),
   apL($, P.char('\n')),
@@ -248,7 +253,7 @@ code = pipe(
 )(P.string("```"))
 
 blockquote :: P.Parser Block
-blockquote = pipe(
+export blockquote = pipe(
   mapL(Blockquote),
   ap($, contentWithLineReturn(P.choice([P.string("\n"), P.string("```"), P.string(">")]))),
   apL(
@@ -258,25 +263,25 @@ blockquote = pipe(
 )(alt(P.symbol(">"), P.string(">")))
 
 
-listItemStart = map(
+export listItemStart = map(
   always(""),
   apL(P.many(P.char(' ')), apL(P.oneOf(['*', '-', '+']), P.some(P.char(' ')))),
 )
 
 unorderedListItem :: P.Parser Content
-unorderedListItem = pipe(
+export unorderedListItem = pipe(
   chain(always(apL(content, singleReturnTerminal))),
 )(listItemStart)
 
 unorderedList :: P.Parser Block
-unorderedList = pipe(
+export unorderedList = pipe(
   P.some,
   map(UnorderedList),
 )(unorderedListItem)
 
 
 paragraph :: P.Parser Block
-paragraph = pipe(
+export paragraph = pipe(
   map(Paragraph),
   apL(
     $,
@@ -290,7 +295,7 @@ paragraph = pipe(
 )(contentWithLineReturn(P.choice([listItemStart, P.string("\n"), P.string("```"), P.string(">")])))
 
 block :: P.Parser Block
-block = P.choice([
+export block = P.choice([
   heading(H6, "######"),
   heading(H5, "#####"),
   heading(H4, "####"),
@@ -304,7 +309,7 @@ block = P.choice([
 ])
 
 markdownParser :: P.Parser Markdown
-markdownParser = pipe(
+export markdownParser = pipe(
   P.choice,
   P.many,
   map(mapMaybe((x) => x)),

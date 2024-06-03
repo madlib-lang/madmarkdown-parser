@@ -1,29 +1,31 @@
 import IO from "IO"
+
 import { parseMarkdown } from "@/Main"
 
 
+
 mdFixture = `
-## This \`is\` a **with bold** *tiltle*!
+## This `is` a **with bold** *tiltle*!
 # This is a tiltle!
 
 >*I* am a blockquote * not italic*
 
-\`\`\`javascript
+```javascript
 some code is in there
 
 
-\`\`\`
+```
 
 
 [link](http://some-link11.com) [name](http://some-link.com)
    sdf     ![alt text](http://image-url.com)
 And some paragraph1
-sdf \`TCHOU\` **and BIM** and *italic again*
+sdf `TCHOU` **and BIM** and *italic again*
 
 > with another blockquote
 same same
 > oups
-\`\`\`javascript
+```javascript
 some code is in there
 
 * This is not a list
@@ -31,17 +33,16 @@ some code is in there
 + because it's in a code block!
 - because it's in a code block!
 
-\`\`\`
+```
 
 here are the items:
 * list YO
 * second item
 + third
-- fourth ! + some chars $ that [] are @ \`random\` with a [link](http://someplace.com)
+- fourth ! + some chars $ that [] are @ `random` with a [link](http://someplace.com)
 
 
 **CRAZY BOLD ALSO BOLD !&%$§[]**+#
-
 `
 
 
