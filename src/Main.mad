@@ -1,4 +1,5 @@
 import type { Either } from "Either"
+import type { Maybe } from "Maybe"
 
 import { apL } from "Applicative"
 import { mapLeft } from "Either"
@@ -70,33 +71,58 @@ export linkCharacter = P.choice([
   P.char('~'),
 ])
 
-// TODO: support either __bold__ or **bold**
+
+
+boldDelimiter = P.choice([P.string("**"), P.string("__")])
+
 bold :: P.Parser ContentPart
 export bold = pipe(
   mapL(Bold),
   ap(
     $,
     pipe(
-      (a) => P.someTill(a, P.lookAhead(P.string("**"))),
+      (a) => P.someTill(a, P.lookAhead(boldDelimiter)),
       map(String.fromList),
     )(P.notChar('\n')),
   ),
-  apL($, P.string("**")),
-)(P.string("**"))
+  apL($, boldDelimiter),
+)(boldDelimiter)
 
-// TODO: support either _italic_ or *italic*
+italicDelimiter = P.choice([P.char('*'), P.char('_')])
+
 italic :: P.Parser ContentPart
 export italic = do {
-  _ <- P.char('*')
+  _ <- italicDelimiter
   firstChar <- P.notChar(' ')
-  nextChars <- P.many(P.notOneOf(['*', '\n']))
-  _ <- P.char('*')
+  nextChars <- P.many(P.notOneOf(['_', '*', '\n']))
+  _ <- italicDelimiter
 
   return pipe(
     String.fromList,
     Italic,
     of,
   )([firstChar, ...nextChars])
+}
+
+// https://help.obsidian.md/Linking+notes+and+files/Internal+links
+// [[01 - Hello mad, mad world#Installation|Installing]]
+internalLink :: P.Parser ContentPart
+export internalLink = do {
+  _ <- P.string("[[")
+  url <- pipe(
+    P.many,
+    map(String.fromList),
+  )(linkCharacter)
+  _ <- P.char('|')
+  displayText <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string("]]"))
+  _ <- P.string("]]")
+  return pipe(
+    InternalLink(displayText),
+    of,
+  )(url)
 }
 
 inlineCode :: P.Parser ContentPart
@@ -136,10 +162,6 @@ export link = pipe(
     P.char(']'),
   ),
 )
-
-// wikiLink :: P.Parse ContentPart
-// wikiLink = pipe(
-// )
 
 image :: P.Parser ContentPart
 export image = pipe(
@@ -199,20 +221,23 @@ export content = pipe(
   P.many,
 )([bold, italic, inlineCode, image, link, text])
 
+coerceEmpty :: Maybe a -> P.Parser ContentPart
+export coerceEmpty = pipe(
+  where {
+    Just(_) =>
+      aempty
+
+    Nothing =>
+      lineReturn
+  },
+)
+
 lineReturnExceptBefore :: P.Parser a -> P.Parser ContentPart
 export lineReturnExceptBefore = (before) => pipe(
   mapL(identity),
   ap($, alt(map(always(Just({})), before), pure(Nothing))),
   P.lookAhead,
-  chain(
-    where {
-      Just(_) =>
-        aempty
-
-      Nothing =>
-        lineReturn
-    },
-  ),
+  chain(coerceEmpty),
 )(lineReturn)
 
 contentWithLineReturn :: P.Parser a -> P.Parser Content

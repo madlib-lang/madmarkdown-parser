@@ -3,26 +3,49 @@ import type { Wish } from "Wish"
 import { Left, Right } from "Either"
 import File from "File"
 import { always } from "Function"
+import { Just, Nothing } from "Maybe"
 import Parse from "Parse"
 import Test from "Test"
 import Wish from "Wish"
 
+
+
+assertEquals = Test.assertEquals
+test = Test.test
+TestError = Test.Error
+ParseError = Parse.Error
+
 import {
+  Blockquote,
+  Bold,
+  Code,
   H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+  Image,
+  InlineCode,
+  InternalLink,
   Italic,
+  LineReturn,
   Link,
+  Paragraph,
   Text,
   between,
   block,
   blockquote,
   bold,
   code,
+  coerceEmpty,
   content,
   contentWithLineReturn,
   doubleReturnTerminal,
   heading,
   image,
   inlineCode,
+  internalLink,
   italic,
   lineReturn,
   lineReturnExceptBefore,
@@ -41,59 +64,180 @@ import {
 
 
 
-// export type Parser a = Parser(String -> Location -> #[List #[a, String], Location])
-
-// testParser :: Parse.Parser a -> String -> b -> Wish Test.AssertionError {}
+testParser :: (Show a, Eq a) => Parse.Parser a -> String -> a -> Wish Test.AssertionError {}
 testParser = (parser, toParse, expected) => pipe(
   Parse.runParser(parser),
   where {
     Left(Parse.Error(Parse.Loc(a, b, c))) =>
-      Wish.bad(Test.Error(`Error during parsing ${show(a)} ${show(b)} ${show(c)}`))
+      Wish.bad(TestError(`Error during parsing ${show(a)} ${show(b)} ${show(c)}`))
 
     Right(res) =>
-      Test.assertEquals(res, expected)
+      assertEquals(res, expected)
   },
 )(toParse)
 
-// Test.test(
-//   "linkCharacter",
-//   () => do {
-//     return testParser(linkCharacter, "a1!#$%&'*+,-./:;=?@_~", '~')
-//   },
-// )
+/*
+test(
+  "parseMarkdown",
+  () => pipe(
+    parseMarkdown,
+    where {
+      Left(x) =>
+        Wish.bad(TestError(x))
 
-Test.test(
-  "block",
+      Right(y) =>
+        assertEquals(y, [])
+    },
+  )("`````"),
+)
+*/
+
+test(
+  "linkCharacter",
   () => do {
-    return testParser(block, "# hey", H1([Text("hey")]))
+    _ <- testParser(linkCharacter, "a", 'a')
+    _ <- testParser(linkCharacter, "1", '1')
+    _ <- testParser(linkCharacter, "!", '!')
+    _ <- testParser(linkCharacter, "#", '#')
+    _ <- testParser(linkCharacter, "$", '$')
+    _ <- testParser(linkCharacter, "%", '%')
+    _ <- testParser(linkCharacter, "&", '&')
+    _ <- testParser(linkCharacter, "'", '\'')
+    _ <- testParser(linkCharacter, "*", '*')
+    _ <- testParser(linkCharacter, "+", '+')
+    _ <- testParser(linkCharacter, ",", ',')
+    _ <- testParser(linkCharacter, "-", '-')
+    _ <- testParser(linkCharacter, ".", '.')
+    _ <- testParser(linkCharacter, "/", '/')
+    _ <- testParser(linkCharacter, ":", ':')
+    _ <- testParser(linkCharacter, ";", ';')
+    _ <- testParser(linkCharacter, "=", '=')
+    _ <- testParser(linkCharacter, "?", '?')
+    _ <- testParser(linkCharacter, "@", '@')
+    _ <- testParser(linkCharacter, "_", '_')
+    return testParser(linkCharacter, "~", '~')
   },
 )
 
-Test.test(
-  "italic",
-  () => do {
-    return testParser(italic, "*firenze*", Italic("firenze"))
-  },
+test("block", () => testParser(block, "# hey", H1([Text("hey")])))
+
+test("*italic*", () => testParser(italic, "*Firenze*", Italic("Firenze")))
+test("_italic_", () => testParser(italic, "_Venezia_", Italic("Venezia")))
+test("**bold**", () => testParser(bold, "**asterisk**", Bold("asterisk")))
+test("__bold__", () => testParser(bold, "__underscore__", Bold("underscore")))
+
+test("inlineCode", () => testParser(inlineCode, "`() => {}`", InlineCode("() => {}")))
+test(
+  "image",
+  () => testParser(image, "![description](//image.biz)", Image("description", "//image.biz")),
 )
 
-Test.test(
+test(
   "link",
-  () => do {
-    return testParser(
-      link,
-      "[madlib](https://madlib.space)",
-      Link("madlib", "https://madlib.space"),
-    )
-  },
+  () => testParser(link, "[madlib](https://madlib.space)", Link("madlib", "https://madlib.space")),
 )
 
-Test.test(
+test(
+  "internalLink",
+  () => testParser(
+    internalLink,
+    "[[https://madlib.space|madlib]]",
+    InternalLink("madlib", "https://madlib.space"),
+  ),
+)
+
+test("textTerminals", () => testParser(textTerminals, "*x*", ""))
+test("text", () => testParser(text, "hooray", Text("hooray")))
+test("lineReturn", () => testParser(lineReturn, "\n", LineReturn))
+test(
+  "content",
+  () => testParser(
+    content,
+    "text *italic* **bold** `code` ![ref](domain) [link](domain)",
+    [
+      Text("text "),
+      Italic("italic"),
+      Text(" "),
+      Bold("bold"),
+      Text(" "),
+      InlineCode("code"),
+      Text(" "),
+      Image("ref", "domain"),
+      Text(" "),
+      Link("link", "domain"),
+    ],
+  ),
+)
+
+test(
+  "contentWithLineReturn",
+  () => testParser(
+    contentWithLineReturn(Parse.char('^')),
+    "^\n\n",
+    [Text("^"), LineReturn, LineReturn],
+  ),
+)
+
+test("doubleReturnTerminal - newnew", () => testParser(doubleReturnTerminal, "\n\n", "\n\n"))
+test("doubleReturnTerminal - eof", () => testParser(doubleReturnTerminal, "", ""))
+test("doubleReturnTerminal - new", () => testParser(doubleReturnTerminal, "\n", ""))
+
+PARSED_FIXTURE = [
+  H1([Text("this is a fixture")]),
+  H2([Text("sometimes")]),
+  H3([Text("lots")]),
+  H4([Text("of")]),
+  H5([Text("headers")]),
+  H6([Text("are needed")]),
+  Paragraph([
+    Text("Impossibly "),
+    Italic("charming"),
+    Text(" and "),
+    Italic("sophisticated"),
+    Text(". "),
+    Bold("Delightfully"),
+    Text(" jejeune. How "),
+    Bold("droll"),
+    Text("."),
+  ]),
+  Code(
+    "javascript",
+    "\nI once had a dream\n* where\n* I called\n* it\n* javavascurpies\n\n\nmore more more more text\n",
+  ),
+  Blockquote([Text("This is a blockquote.")]),
+  Paragraph([Link("link", "//madlib.biz")]),
+  Paragraph([Text("And another thing&hellip;"), LineReturn]),
+]
+
+test(
   "markdownParser",
-  () => do {
-    return pipe(
-      File.read,
-      Wish.mapRej(always(Test.Error("barf"))),
-      chain((FIXTURE) => testParser(markdownParser, FIXTURE, [])),
-    )("./FIXTURE.md")
-  },
+  () => pipe(
+    File.read,
+    Wish.mapRej(always(TestError("barf"))),
+    chain((FIXTURE) => testParser(markdownParser, FIXTURE, PARSED_FIXTURE)),
+  )("./FIXTURE.md"),
+)
+
+test(
+  "parseMarkdown",
+  () => pipe(
+    File.read,
+    Wish.mapRej(always(TestError("barf"))),
+    chain(
+      pipe(
+        parseMarkdown,
+        where {
+          Left(x) =>
+            pipe(
+              show,
+              TestError,
+              Wish.bad,
+            )(x)
+
+          Right(res) =>
+            assertEquals(res, PARSED_FIXTURE)
+        },
+      ),
+    ),
+  )("./FIXTURE.md"),
 )
