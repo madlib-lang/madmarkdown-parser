@@ -44,7 +44,6 @@ import {
   lineReturn,
   lineReturnExceptBefore,
   link,
-  linkCharacter,
   listItemStart,
   markdownParser,
   paragraph,
@@ -55,6 +54,7 @@ import {
   unorderedList,
   unorderedListItem,
 } from "./Main"
+import { linkCharacter } from "@/Link"
 import { testParser } from "@/Test"
 
 

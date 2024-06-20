@@ -11,8 +11,11 @@ import P from "Parse"
 import String from "String"
 
 import { between } from "@/Combinators"
+import { linkCharacter } from "@/Link"
 
 
+
+NOTHING = always("")
 
 export type ContentPart
   = Text(String)
@@ -37,35 +40,9 @@ export type Block
   | Blockquote(Content)
   | Code(String, String)
   | UnorderedList(List Content)
+  | OrderedList(List Content)
 
 export alias Markdown = List Block
-
-// https://stackoverflow.com/questions/1547899/which-characters-make-a-url-invalid
-linkCharacter :: P.Parser Char
-export linkCharacter = P.choice([
-  P.letter,
-  P.digit,
-  P.char('!'),
-  P.char('#'),
-  P.char('$'),
-  P.char('%'),
-  P.char('&'),
-  P.char('\''),
-  P.char('*'),
-  P.char('+'),
-  P.char(','),
-  P.char('-'),
-  P.char('.'),
-  P.char('/'),
-  P.char(':'),
-  P.char(';'),
-  P.char('='),
-  P.char('?'),
-  P.char('@'),
-  P.char('_'),
-  P.char('~'),
-])
-
 
 
 boldDelimiter = P.choice([P.string("**"), P.string("__")])
@@ -205,13 +182,13 @@ export image = pipe(
 
 textTerminals :: P.Parser String
 export textTerminals = P.choice([
-  map(always(""), internalLink),
-  map(always(""), bold),
-  map(always(""), italic),
-  map(always(""), inlineCode),
-  map(always(""), image),
-  map(always(""), link),
-  map(always(""), P.eof),
+  map(NOTHING, internalLink),
+  map(NOTHING, bold),
+  map(NOTHING, italic),
+  map(NOTHING, inlineCode),
+  map(NOTHING, image),
+  map(NOTHING, link),
+  map(NOTHING, P.eof),
   P.string("\n"),
 ])
 
@@ -270,12 +247,12 @@ export heading = (constructor) => pipe(
 )
 
 singleReturnTerminal :: P.Parser String
-export singleReturnTerminal = alt(P.string("\n"), map(always(""), P.eof))
+export singleReturnTerminal = alt(P.string("\n"), map(NOTHING, P.eof))
 
 doubleReturnTerminal :: P.Parser String
 export doubleReturnTerminal = P.choice([
   P.string("\n\n"),
-  map(always(""), P.eof),
+  map(NOTHING, P.eof),
   pipe(
     ap(pure((_, _) => "")),
     ap($, P.eof),
@@ -284,7 +261,7 @@ export doubleReturnTerminal = P.choice([
 
 code :: P.Parser Block
 export code = pipe(
-  mapL((lang, c) => Code(lang, c)),
+  mapL(Code),
   ap($, alt(map(String.fromList, P.letters), pure(""))),
   apL($, P.char('\n')),
   ap($, map(String.fromList, P.manyTill(P.anyChar, P.lookAhead(P.string("\n```"))))),
@@ -301,23 +278,40 @@ export blockquote = pipe(
   ),
 )(alt(P.symbol(">"), P.string(">")))
 
+SPACE = P.char(' ')
 
-export listItemStart = map(
-  always(""),
-  apL(P.many(P.char(' ')), apL(P.oneOf(['*', '-', '+']), P.some(P.char(' ')))),
+listItemStart :: P.Parser a -> P.Parser Content
+export listItemStart = (starter) => pipe(
+  chain(always(apL(content, singleReturnTerminal))),
+)(starter)
+
+export olistItemStart = map(
+  NOTHING,
+  apL(P.many(SPACE), apL(P.someTill(P.digit, P.char('.')), P.some(SPACE))),
+)
+
+orderedListItem :: P.Parser Content
+export orderedListItem = listItemStart(olistItemStart)
+
+orderedList :: P.Parser Block
+export orderedList = pipe(
+  P.some,
+  map(OrderedList),
+)(orderedListItem)
+
+export ulistItemStart = map(
+  NOTHING,
+  apL(P.many(SPACE), apL(P.oneOf(['*', '-', '+']), P.some(SPACE))),
 )
 
 unorderedListItem :: P.Parser Content
-export unorderedListItem = pipe(
-  chain(always(apL(content, singleReturnTerminal))),
-)(listItemStart)
+export unorderedListItem = listItemStart(ulistItemStart)
 
 unorderedList :: P.Parser Block
 export unorderedList = pipe(
   P.some,
   map(UnorderedList),
 )(unorderedListItem)
-
 
 paragraph :: P.Parser Block
 export paragraph = pipe(
@@ -328,10 +322,15 @@ export paragraph = pipe(
       doubleReturnTerminal,
       P.lookAhead(P.string("\n```")),
       P.lookAhead(P.string("\n>")),
-      P.lookAhead(apL(P.string("\n"), listItemStart)),
+      P.lookAhead(apL(P.string("\n"), olistItemStart)),
+      P.lookAhead(apL(P.string("\n"), ulistItemStart)),
     ]),
   ),
-)(contentWithLineReturn(P.choice([listItemStart, P.string("\n"), P.string("```"), P.string(">")])))
+)(
+  contentWithLineReturn(
+    P.choice([olistItemStart, ulistItemStart, P.string("\n"), P.string("```"), P.string(">")]),
+  ),
+)
 
 block :: P.Parser Block
 export block = P.choice([
@@ -342,6 +341,7 @@ export block = P.choice([
   heading(H2, "##"),
   heading(H1, "#"),
   unorderedList,
+  orderedList,
   blockquote,
   code,
   paragraph,
@@ -351,7 +351,7 @@ markdownParser :: P.Parser Markdown
 export markdownParser = pipe(
   P.choice,
   P.many,
-  map(mapMaybe((x) => x)),
+  map(mapMaybe(identity)),
 )([map(always(Nothing), P.spaces), map(Just, block)])
 
 parseMarkdown :: String -> Either String Markdown

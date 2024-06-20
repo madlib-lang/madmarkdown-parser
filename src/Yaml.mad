@@ -11,6 +11,8 @@ import { Just, Nothing } from "Maybe"
 import P from "Parse"
 import String from "String"
 
+import { linkCharacter } from "@/Link"
+
 
 
 // https://help.obsidian.md/Editing+and+formatting/Properties
@@ -21,7 +23,8 @@ export type YamlValue
   | YamlFloat(Float)
   | YamlInteger(Integer)
   | YamlBoolean(Boolean)
-  | YamlLink(String)
+  | YamlLink(String, String)
+  | YamlInternalLink(String, String)
   | YamlDate(String)
   | YamlList(List YamlValue)
 
@@ -30,9 +33,38 @@ export type YamlPair = YamlPair(String, YamlValue, String)
 
 export alias YamlData = List YamlPair
 
-internalLink :: Parser YamlValue
-internalLink = do {
+shortInternalLink :: Parser YamlValue
+export shortInternalLink = do {
   _ <- P.string(`"[[`)
-
+  ref <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string(`]]"`))
   _ <- P.string(`]]"`)
+  return pipe(
+    YamlInternalLink(ref),
+    of,
+  )(ref)
 }
+
+internalLinkWithDisplay :: Parser YamlValue
+export internalLinkWithDisplay = do {
+  _ <- P.string(`"[[`)
+  url <- pipe(
+    P.many,
+    map(String.fromList),
+  )(linkCharacter)
+  _ <- P.char('|')
+  ref <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string(`]]"`))
+  _ <- P.string(`]]"`)
+  return pipe(
+    YamlInternalLink(ref),
+    of,
+  )(ref)
+}
+
+internalLink :: P.Parser YamlValue
+export internalLink = P.choice([shortInternalLink, internalLinkWithDisplay])
