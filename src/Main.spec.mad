@@ -173,9 +173,17 @@ PARSED_FIXTURE = [
   ),
   Blockquote([Text("This is a blockquote.")]),
   Paragraph([Link("link", "//madlib.biz")]),
-  Paragraph([Text("And another thing&hellip;"), LineReturn]),
+  Paragraph([Text("And another thing&hellip;")]),
+  Paragraph([InternalLink("internal links are magical", "internal links are magical")]),
+  Paragraph([
+    Text("Sometimes you want an "),
+    InternalLink("with different display text", "internal link"),
+    LineReturn,
+    Text("Other times you have text before "),
+    InternalLink("an internal link", "an internal link"),
+    LineReturn,
+  ]),
 ]
-
 test(
   "markdownParser",
   () => pipe(
