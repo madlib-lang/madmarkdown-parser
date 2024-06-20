@@ -1,9 +1,6 @@
-import type { Wish } from "Wish"
-
 import { Left, Right } from "Either"
 import File from "File"
 import { always } from "Function"
-import { Just, Nothing } from "Maybe"
 import Parse from "Parse"
 import Test from "Test"
 import Wish from "Wish"
@@ -13,8 +10,6 @@ import Wish from "Wish"
 assertEquals = Test.assertEquals
 test = Test.test
 TestError = Test.Error
-ParseError = Parse.Error
-
 import {
   Blockquote,
   Bold,
@@ -33,7 +28,6 @@ import {
   Link,
   Paragraph,
   Text,
-  between,
   block,
   blockquote,
   bold,
@@ -61,36 +55,9 @@ import {
   unorderedList,
   unorderedListItem,
 } from "./Main"
+import { testParser } from "@/Test"
 
 
-
-testParser :: (Show a, Eq a) => Parse.Parser a -> String -> a -> Wish Test.AssertionError {}
-testParser = (parser, toParse, expected) => pipe(
-  Parse.runParser(parser),
-  where {
-    Left(Parse.Error(Parse.Loc(a, b, c))) =>
-      Wish.bad(TestError(`Error during parsing ${show(a)} ${show(b)} ${show(c)}`))
-
-    Right(res) =>
-      assertEquals(res, expected)
-  },
-)(toParse)
-
-/*
-test(
-  "parseMarkdown",
-  () => pipe(
-    parseMarkdown,
-    where {
-      Left(x) =>
-        Wish.bad(TestError(x))
-
-      Right(y) =>
-        assertEquals(y, [])
-    },
-  )("`````"),
-)
-*/
 
 test(
   "linkCharacter",
@@ -119,6 +86,14 @@ test(
   },
 )
 
+test(
+  "internalLink",
+  () => do {
+    _ <- testParser(internalLink, "[[xyz|abc]]", InternalLink("abc", "xyz"))
+    return testParser(internalLink, "[[xyz]]", InternalLink("xyz", "xyz"))
+  },
+)
+
 test("block", () => testParser(block, "# hey", H1([Text("hey")])))
 
 test("*italic*", () => testParser(italic, "*Firenze*", Italic("Firenze")))
@@ -137,14 +112,6 @@ test(
   () => testParser(link, "[madlib](https://madlib.space)", Link("madlib", "https://madlib.space")),
 )
 
-test(
-  "internalLink",
-  () => testParser(
-    internalLink,
-    "[[https://madlib.space|madlib]]",
-    InternalLink("madlib", "https://madlib.space"),
-  ),
-)
 
 test("textTerminals", () => testParser(textTerminals, "*x*", ""))
 test("text", () => testParser(text, "hooray", Text("hooray")))
@@ -241,3 +208,29 @@ test(
     ),
   )("./FIXTURE.md"),
 )
+
+/*
+test(
+  "parseMarkdown on real example file",
+  () => pipe(
+    File.read,
+    Wish.mapRej(always(TestError("barf"))),
+    chain(
+      pipe(
+        parseMarkdown,
+        where {
+          Left(x) =>
+            pipe(
+              show,
+              TestError,
+              Wish.bad,
+            )(x)
+
+          Right(res) =>
+            assertEquals(res, [])
+        },
+      ),
+    ),
+  )("./notes/Reference/The Fence.md"),
+)
+*/

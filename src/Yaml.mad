@@ -1,0 +1,38 @@
+import type { Either } from "Either"
+import type { Maybe } from "Maybe"
+import type { Parser } from "Parse"
+
+import { apL } from "Applicative"
+import { mapLeft } from "Either"
+import { always, equals, identity } from "Function"
+import { mapL } from "Functor"
+import { dropWhile, mapMaybe } from "List"
+import { Just, Nothing } from "Maybe"
+import P from "Parse"
+import String from "String"
+
+
+
+// https://help.obsidian.md/Editing+and+formatting/Properties
+// MadMarkdownParser aims to support the YAML that is supported by Obsidian,
+// _not_ the entire YAML spec
+export type YamlValue
+  = YamlString(String)
+  | YamlFloat(Float)
+  | YamlInteger(Integer)
+  | YamlBoolean(Boolean)
+  | YamlLink(String)
+  | YamlDate(String)
+  | YamlList(List YamlValue)
+
+// key / value / comment
+export type YamlPair = YamlPair(String, YamlValue, String)
+
+export alias YamlData = List YamlPair
+
+internalLink :: Parser YamlValue
+internalLink = do {
+  _ <- P.string(`"[[`)
+
+  _ <- P.string(`]]"`)
+}

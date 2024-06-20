@@ -10,6 +10,8 @@ import { Just, Nothing } from "Maybe"
 import P from "Parse"
 import String from "String"
 
+import { between } from "@/Combinators"
+
 
 
 export type ContentPart
@@ -37,13 +39,6 @@ export type Block
   | UnorderedList(List Content)
 
 export alias Markdown = List Block
-
-between :: P.Parser a -> P.Parser b -> P.Parser c -> P.Parser b
-export between = (start, mid, end) => pipe(
-  mapL(identity),
-  ap($, mid),
-  apL($, end),
-)(start)
 
 // https://stackoverflow.com/questions/1547899/which-characters-make-a-url-invalid
 linkCharacter :: P.Parser Char
@@ -106,8 +101,8 @@ export italic = do {
 
 // https://help.obsidian.md/Linking+notes+and+files/Internal+links
 // [[01 - Hello mad, mad world#Installation|Installing]]
-internalLink :: P.Parser ContentPart
-export internalLink = do {
+internalLinkWithDisplay :: P.Parser ContentPart
+export internalLinkWithDisplay = do {
   _ <- P.string("[[")
   url <- pipe(
     P.many,
@@ -124,6 +119,24 @@ export internalLink = do {
     of,
   )(url)
 }
+
+// [[02 - Cool data for lyfe]]
+shortInternalLink :: P.Parser ContentPart
+export shortInternalLink = do {
+  _ <- P.string("[[")
+  ref <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string("]]"))
+  _ <- P.string("]]")
+  return pipe(
+    InternalLink(ref),
+    of,
+  )(ref)
+}
+
+internalLink :: P.Parser ContentPart
+export internalLink = P.choice([shortInternalLink, internalLinkWithDisplay])
 
 inlineCode :: P.Parser ContentPart
 export inlineCode = pipe(
@@ -192,6 +205,7 @@ export image = pipe(
 
 textTerminals :: P.Parser String
 export textTerminals = P.choice([
+  map(always(""), internalLink),
   map(always(""), bold),
   map(always(""), italic),
   map(always(""), inlineCode),
@@ -219,7 +233,7 @@ content :: P.Parser Content
 export content = pipe(
   P.choice,
   P.many,
-)([bold, italic, inlineCode, image, link, text])
+)([internalLink, bold, italic, inlineCode, image, link, text])
 
 coerceEmpty :: Maybe a -> P.Parser ContentPart
 export coerceEmpty = pipe(
@@ -245,7 +259,7 @@ export contentWithLineReturn = (delimiter) => pipe(
   P.choice,
   P.some,
   map(dropWhile(equals(LineReturn))),
-)([bold, italic, inlineCode, image, link, text, lineReturnExceptBefore(delimiter)])
+)([internalLink, bold, italic, inlineCode, image, link, text, lineReturnExceptBefore(delimiter)])
 
 heading :: (Content -> Block) -> String -> P.Parser Block
 export heading = (constructor) => pipe(

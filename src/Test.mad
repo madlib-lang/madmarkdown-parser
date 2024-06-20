@@ -1,0 +1,20 @@
+import { Left, Right } from "Either"
+import Parse from "Parse"
+import Test from "Test"
+import Wish from "Wish"
+
+
+
+TestError = Test.Error
+
+testParser :: (Show a, Eq a) => Parse.Parser a -> String -> a -> Wish Test.AssertionError {}
+export testParser = (parser, toParse, expected) => pipe(
+  Parse.runParser(parser),
+  where {
+    Left(Parse.Error(Parse.Loc(a, b, c))) =>
+      Wish.bad(TestError(`Error during parsing ${show(a)} ${show(b)} ${show(c)}`))
+
+    Right(res) =>
+      Test.assertEquals(res, expected)
+  },
+)(toParse)

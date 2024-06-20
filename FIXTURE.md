@@ -31,3 +31,8 @@ more more more more text
 [link](//madlib.biz)
 
 And another thing&hellip;
+
+[[internal links are magical]]
+
+Sometimes you want an [[internal link|with different display text]]
+Other times you have text before [[an internal link]]

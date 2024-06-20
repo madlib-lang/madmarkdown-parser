@@ -1,0 +1,14 @@
+import type { Parser } from "Parse"
+
+import { apL } from "Applicative"
+import { identity } from "Function"
+import { mapL } from "Functor"
+
+
+
+between :: Parser a -> Parser b -> Parser c -> Parser b
+export between = (start, mid, end) => pipe(
+  mapL(identity),
+  ap($, mid),
+  apL($, end),
+)(start)
