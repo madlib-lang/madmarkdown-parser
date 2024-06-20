@@ -10,7 +10,7 @@ import { Just, Nothing } from "Maybe"
 import P from "Parse"
 import String from "String"
 
-import { between } from "@/Combinators"
+import { between, someUntil } from "@/Combinators"
 import { linkCharacter } from "@/Link"
 
 
@@ -287,7 +287,7 @@ export listItemStart = (starter) => pipe(
 
 export olistItemStart = map(
   NOTHING,
-  apL(P.many(SPACE), apL(P.someTill(P.digit, P.char('.')), P.some(SPACE))),
+  apL(P.many(SPACE), apL(someUntil(P.digit, P.char('.')), P.some(SPACE))),
 )
 
 orderedListItem :: P.Parser Content
@@ -313,6 +313,9 @@ export unorderedList = pipe(
   map(UnorderedList),
 )(unorderedListItem)
 
+markdownList :: P.Parser Block
+export markdownList = P.choice([orderedList, unorderedList])
+
 paragraph :: P.Parser Block
 export paragraph = pipe(
   map(Paragraph),
@@ -328,7 +331,7 @@ export paragraph = pipe(
   ),
 )(
   contentWithLineReturn(
-    P.choice([olistItemStart, ulistItemStart, P.string("\n"), P.string("```"), P.string(">")]),
+    P.choice([P.string("\n"), P.string("```"), P.string(">"), olistItemStart, ulistItemStart]),
   ),
 )
 
@@ -340,8 +343,7 @@ export block = P.choice([
   heading(H3, "###"),
   heading(H2, "##"),
   heading(H1, "#"),
-  unorderedList,
-  orderedList,
+  markdownList,
   blockquote,
   code,
   paragraph,

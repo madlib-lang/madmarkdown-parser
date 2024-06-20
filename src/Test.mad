@@ -18,3 +18,13 @@ export testParser = (parser, toParse, expected) => pipe(
       Test.assertEquals(res, expected)
   },
 )(toParse)
+
+parseTest :: (Show a, Eq a) => String
+  -> Parse.Parser a
+  -> String
+  -> a
+  -> Wish Test.TestResult Test.TestResult
+export parseTest = (testName, parser, toParse, expected) => Test.test(
+  testName,
+  () => testParser(parser, toParse, expected),
+)

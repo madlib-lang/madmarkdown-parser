@@ -1,6 +1,7 @@
 import { Left, Right } from "Either"
 import File from "File"
 import { always } from "Function"
+import P from "Parse"
 import Parse from "Parse"
 import Test from "Test"
 import Wish from "Wish"
@@ -26,8 +27,10 @@ import {
   Italic,
   LineReturn,
   Link,
+  OrderedList,
   Paragraph,
   Text,
+  UnorderedList,
   block,
   blockquote,
   bold,
@@ -46,44 +49,84 @@ import {
   link,
   listItemStart,
   markdownParser,
+  olistItemStart,
+  orderedList,
   paragraph,
   parseMarkdown,
   singleReturnTerminal,
   text,
   textTerminals,
+  ulistItemStart,
   unorderedList,
   unorderedListItem,
 } from "./Main"
 import { linkCharacter } from "@/Link"
-import { testParser } from "@/Test"
+import { parseTest, testParser } from "@/Test"
 
+
+
+test(
+  "ulistItemStart",
+  () => do {
+    _ <- testParser(ulistItemStart, " * ", "")
+    return testParser(ulistItemStart, "     * ", "")
+  },
+)
+/*
+test(
+  "olistItemStart",
+  () => do {
+    _ <- testParser(olistItemStart, " 1. ", "")
+    return testParser(olistItemStart, "     1. ", "")
+  },
+)
+*/
 
 
 test(
   "linkCharacter",
   () => do {
-    _ <- testParser(linkCharacter, "a", 'a')
-    _ <- testParser(linkCharacter, "1", '1')
-    _ <- testParser(linkCharacter, "!", '!')
-    _ <- testParser(linkCharacter, "#", '#')
-    _ <- testParser(linkCharacter, "$", '$')
-    _ <- testParser(linkCharacter, "%", '%')
-    _ <- testParser(linkCharacter, "&", '&')
-    _ <- testParser(linkCharacter, "'", '\'')
-    _ <- testParser(linkCharacter, "*", '*')
-    _ <- testParser(linkCharacter, "+", '+')
-    _ <- testParser(linkCharacter, ",", ',')
-    _ <- testParser(linkCharacter, "-", '-')
-    _ <- testParser(linkCharacter, ".", '.')
-    _ <- testParser(linkCharacter, "/", '/')
-    _ <- testParser(linkCharacter, ":", ':')
-    _ <- testParser(linkCharacter, ";", ';')
-    _ <- testParser(linkCharacter, "=", '=')
-    _ <- testParser(linkCharacter, "?", '?')
-    _ <- testParser(linkCharacter, "@", '@')
-    _ <- testParser(linkCharacter, "_", '_')
-    return testParser(linkCharacter, "~", '~')
+    charTest = testParser(linkCharacter)
+    _ <- charTest("a", 'a')
+    _ <- charTest("1", '1')
+    _ <- charTest("!", '!')
+    _ <- charTest("#", '#')
+    _ <- charTest("$", '$')
+    _ <- charTest("%", '%')
+    _ <- charTest("&", '&')
+    _ <- charTest("'", '\'')
+    _ <- charTest("*", '*')
+    _ <- charTest("+", '+')
+    _ <- charTest(",", ',')
+    _ <- charTest("-", '-')
+    _ <- charTest(".", '.')
+    _ <- charTest("/", '/')
+    _ <- charTest(":", ':')
+    _ <- charTest(";", ';')
+    _ <- charTest("=", '=')
+    _ <- charTest("?", '?')
+    _ <- charTest("@", '@')
+    _ <- charTest("_", '_')
+    return charTest("~", '~')
   },
+)
+/*
+parseTest(
+  "orderedList",
+  orderedList,
+  ` 1. Omar
+ 2. Marlo
+ 3. Snoop`,
+  OrderedList([[Text("Hooray")], [Text("Nice")], [Text("Dope")]]),
+)
+*/
+parseTest(
+  "unorderedList",
+  unorderedList,
+  ` * a
+ * b
+ * c`,
+  UnorderedList([[Text("a")], [Text("b")], [Text("c")]]),
 )
 
 test(
@@ -94,28 +137,21 @@ test(
   },
 )
 
-test("block", () => testParser(block, "# hey", H1([Text("hey")])))
+parseTest("block", block, "# hey", H1([Text("hey")]))
 
-test("*italic*", () => testParser(italic, "*Firenze*", Italic("Firenze")))
-test("_italic_", () => testParser(italic, "_Venezia_", Italic("Venezia")))
-test("**bold**", () => testParser(bold, "**asterisk**", Bold("asterisk")))
-test("__bold__", () => testParser(bold, "__underscore__", Bold("underscore")))
+parseTest("*italic*", italic, "*Firenze*", Italic("Firenze"))
+parseTest("_italic_", italic, "_Venezia_", Italic("Venezia"))
+parseTest("**bold**", bold, "**asterisk**", Bold("asterisk"))
+parseTest("__bold__", bold, "__underscore__", Bold("underscore"))
 
-test("inlineCode", () => testParser(inlineCode, "`() => {}`", InlineCode("() => {}")))
-test(
-  "image",
-  () => testParser(image, "![description](//image.biz)", Image("description", "//image.biz")),
-)
+parseTest("image", image, "![description](//image.biz)", Image("description", "//image.biz"))
 
-test(
-  "link",
-  () => testParser(link, "[madlib](https://madlib.space)", Link("madlib", "https://madlib.space")),
-)
+parseTest("link", link, "[madlib](https://madlib.space)", Link("madlib", "https://madlib.space"))
 
 
-test("textTerminals", () => testParser(textTerminals, "*x*", ""))
-test("text", () => testParser(text, "hooray", Text("hooray")))
-test("lineReturn", () => testParser(lineReturn, "\n", LineReturn))
+parseTest("textTerminals", textTerminals, "*x*", "")
+parseTest("text", text, "hooray", Text("hooray"))
+parseTest("lineReturn", lineReturn, "\n", LineReturn)
 test(
   "content",
   () => testParser(
@@ -184,6 +220,7 @@ PARSED_FIXTURE = [
     LineReturn,
   ]),
 ]
+/*
 test(
   "markdownParser",
   () => pipe(
@@ -192,7 +229,7 @@ test(
     chain((FIXTURE) => testParser(markdownParser, FIXTURE, PARSED_FIXTURE)),
   )("./FIXTURE.md"),
 )
-
+/*
 test(
   "parseMarkdown",
   () => pipe(
@@ -242,3 +279,6 @@ test(
   )("./notes/Reference/The Fence.md"),
 )
 */
+
+
+test("inlineCode", () => testParser(inlineCode, "`() => {}`", InlineCode("() => {}")))

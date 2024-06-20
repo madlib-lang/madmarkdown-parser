@@ -68,3 +68,9 @@ export internalLinkWithDisplay = do {
 
 internalLink :: P.Parser YamlValue
 export internalLink = P.choice([shortInternalLink, internalLinkWithDisplay])
+
+// yamlTag :: P.Parser String
+// yamlPair :: P.Parser YamlPair
+// export yamlPair = do {
+//
+// }
