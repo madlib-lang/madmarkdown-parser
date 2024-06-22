@@ -152,10 +152,13 @@ export text = pipe(
   map(
     pipe(
       String.fromList,
+      String.trim,
       YamlString,
     ),
   ),
 )(P.notChar('\n'))
+
+export yamlSingleContent = P.choice([link, internalLink, integer, float, boolean, text])
 
 export yamlContent = pipe(
   P.choice,
@@ -163,16 +166,14 @@ export yamlContent = pipe(
 )([link, internalLink, integer, float, boolean, text])
 
 export list = pipe(
-  chain(always(apL(yamlContent, singleReturnTerminal))),
+  chain(always(apL(yamlSingleContent, singleReturnTerminal))),
 )(blank(apL(P.many(SPACE), apL(P.char('-'), P.some(SPACE)))))
 
 yamlPair :: P.Parser YamlPair
 export yamlPair = do {
   key <- map(String.fromList, P.manyTill(P.choice([P.letter, P.digit]), P.lookAhead(P.char(':'))))
-  value <- map(String.fromList, between(P.char(':'), P.many(P.notChar('\n')), P.char('\n')))
+  value <- between(P.char(':'), yamlSingleContent, P.char('\n'))
   return pipe(
-    String.trim,
-    YamlString,
     YamlPair(key, $),
     of,
   )(value)
