@@ -4,14 +4,18 @@ import type { Parser } from "Parse"
 
 import { apL } from "Applicative"
 import { mapLeft } from "Either"
+import {} from "Float"
 import { always, equals, identity } from "Function"
 import { mapL } from "Functor"
+import IO from "IO"
 import { dropWhile, mapMaybe } from "List"
-import { Just, Nothing } from "Maybe"
+import { Just, Nothing, fromMaybe } from "Maybe"
 import P from "Parse"
 import String from "String"
 
+import { between } from "@/Combinators"
 import { linkCharacter } from "@/Link"
+import { SPACE, blank, singleReturnTerminal } from "@/Shared"
 
 
 
@@ -28,10 +32,35 @@ export type YamlValue
   | YamlDate(String)
   | YamlList(List YamlValue)
 
-// key / value / comment
-export type YamlPair = YamlPair(String, YamlValue, String)
+// key / value
+export type YamlPair = YamlPair(String, YamlValue)
 
 export alias YamlData = List YamlPair
+
+link :: P.Parser YamlValue
+export link = pipe(
+  map(YamlLink),
+  ap(
+    $,
+    between(
+      P.char('('),
+      pipe(
+        P.many,
+        map(String.fromList),
+      )(linkCharacter),
+      P.char(')'),
+    ),
+  ),
+)(
+  between(
+    P.char('['),
+    pipe(
+      P.many,
+      map(String.fromList),
+    )(P.notOneOf([']', '\n'])),
+    P.char(']'),
+  ),
+)
 
 shortInternalLink :: Parser YamlValue
 export shortInternalLink = do {
@@ -63,14 +92,88 @@ export internalLinkWithDisplay = do {
   return pipe(
     YamlInternalLink(ref),
     of,
-  )(ref)
+  )(url)
 }
 
 internalLink :: P.Parser YamlValue
-export internalLink = P.choice([shortInternalLink, internalLinkWithDisplay])
+export internalLink = P.choice([internalLinkWithDisplay, shortInternalLink])
 
-// yamlTag :: P.Parser String
-// yamlPair :: P.Parser YamlPair
-// export yamlPair = do {
-//
-// }
+boolTrue :: P.Parser YamlValue
+export boolTrue = do {
+  matched <- P.string("true")
+  return pipe(
+    YamlBoolean,
+    of,
+  )(true)
+}
+
+boolFalse :: P.Parser YamlValue
+export boolFalse = do {
+  matched <- P.string("false")
+  return pipe(
+    YamlBoolean,
+    of,
+  )(false)
+}
+
+export boolean = P.choice([boolTrue, boolFalse])
+
+numeric = map(
+  pipe(
+    String.fromList,
+    scan,
+    fromMaybe(0),
+  ),
+)
+
+integer :: P.Parser YamlValue
+export integer = do {
+  num <- numeric(P.manyTill(P.digit, P.lookAhead(P.char('\n'))))
+  return pipe(
+    YamlInteger,
+    of,
+  )(num)
+}
+float :: P.Parser YamlValue
+export float = do {
+  num <- numeric(P.manyTill(P.digit, P.lookAhead(P.char('.'))))
+  _ <- P.char('.')
+  floating <- numeric(P.manyTill(P.digit, P.lookAhead(P.char('\n'))))
+  return pipe(
+    scan,
+    fromMaybe(0),
+    YamlFloat,
+    of,
+  )(`${show(num)}.${show(floating)}`)
+}
+
+export text = pipe(
+  P.someTill($, P.lookAhead(P.char('\n'))),
+  map(
+    pipe(
+      String.fromList,
+      YamlString,
+    ),
+  ),
+)(P.notChar('\n'))
+
+export yamlContent = pipe(
+  P.choice,
+  P.many,
+)([link, internalLink, integer, float, boolean, text])
+
+export list = pipe(
+  chain(always(apL(yamlContent, singleReturnTerminal))),
+)(blank(apL(P.many(SPACE), apL(P.char('-'), P.some(SPACE)))))
+
+yamlPair :: P.Parser YamlPair
+export yamlPair = do {
+  key <- map(String.fromList, P.manyTill(P.choice([P.letter, P.digit]), P.lookAhead(P.char(':'))))
+  value <- map(String.fromList, between(P.char(':'), P.many(P.notChar('\n')), P.char('\n')))
+  return pipe(
+    String.trim,
+    YamlString,
+    YamlPair(key, $),
+    of,
+  )(value)
+}

@@ -10,12 +10,11 @@ import { Just, Nothing } from "Maybe"
 import P from "Parse"
 import String from "String"
 
-import { between, someUntil } from "@/Combinators"
+import { between } from "@/Combinators"
 import { linkCharacter } from "@/Link"
+import { NOTHING, SPACE, blank, end, singleReturnTerminal } from "@/Shared"
 
 
-
-NOTHING = always("")
 
 export type ContentPart
   = Text(String)
@@ -182,13 +181,13 @@ export image = pipe(
 
 textTerminals :: P.Parser String
 export textTerminals = P.choice([
-  map(NOTHING, internalLink),
-  map(NOTHING, bold),
-  map(NOTHING, italic),
-  map(NOTHING, inlineCode),
-  map(NOTHING, image),
-  map(NOTHING, link),
-  map(NOTHING, P.eof),
+  blank(internalLink),
+  blank(bold),
+  blank(italic),
+  blank(inlineCode),
+  blank(image),
+  blank(link),
+  end,
   P.string("\n"),
 ])
 
@@ -246,13 +245,11 @@ export heading = (constructor) => pipe(
   apL($, singleReturnTerminal),
 )
 
-singleReturnTerminal :: P.Parser String
-export singleReturnTerminal = alt(P.string("\n"), map(NOTHING, P.eof))
 
 doubleReturnTerminal :: P.Parser String
 export doubleReturnTerminal = P.choice([
   P.string("\n\n"),
-  map(NOTHING, P.eof),
+  end,
   pipe(
     ap(pure((_, _) => "")),
     ap($, P.eof),
@@ -278,16 +275,13 @@ export blockquote = pipe(
   ),
 )(alt(P.symbol(">"), P.string(">")))
 
-SPACE = P.char(' ')
-
 listItemStart :: P.Parser a -> P.Parser Content
 export listItemStart = (starter) => pipe(
   chain(always(apL(content, singleReturnTerminal))),
 )(starter)
 
-export olistItemStart = map(
-  NOTHING,
-  apL(P.many(SPACE), apL(someUntil(P.digit, P.char('.')), P.some(SPACE))),
+export olistItemStart = blank(
+  apL(P.many(SPACE), apL(P.someTill(P.digit, P.char('.')), P.some(SPACE))),
 )
 
 orderedListItem :: P.Parser Content
@@ -299,10 +293,7 @@ export orderedList = pipe(
   map(OrderedList),
 )(orderedListItem)
 
-export ulistItemStart = map(
-  NOTHING,
-  apL(P.many(SPACE), apL(P.oneOf(['*', '-', '+']), P.some(SPACE))),
-)
+export ulistItemStart = blank(apL(P.many(SPACE), apL(P.oneOf(['*', '-', '+']), P.some(SPACE))))
 
 unorderedListItem :: P.Parser Content
 export unorderedListItem = listItemStart(ulistItemStart)

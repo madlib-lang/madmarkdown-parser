@@ -12,8 +12,47 @@ assertEquals = Test.assertEquals
 test = Test.test
 TestError = Test.Error
 
-import { testParser } from "@/Test"
-import { internalLink } from "@/Yaml"
+import { parseTest, testParser } from "@/Test"
+import {
+  YamlBoolean,
+  YamlFloat,
+  YamlInteger,
+  YamlInternalLink,
+  YamlLink,
+  YamlPair,
+  YamlString,
+  boolean,
+  float,
+  integer,
+  internalLink,
+  internalLinkWithDisplay,
+  link,
+  yamlPair,
+} from "@/Yaml"
 
 
 
+parseTest("yamlPair", yamlPair, "cool: nice\n", YamlPair("cool", YamlString("nice")))
+
+parseTest("float", float, "209392002.3992", YamlFloat(209392002.3992))
+parseTest("integer", integer, "13902291", YamlInteger(13902291))
+parseTest(
+  "internalLink - short",
+  internalLink,
+  `"[[heynow]]"`,
+  YamlInternalLink("heynow", "heynow"),
+)
+parseTest(
+  "internalLink - long",
+  internalLink,
+  `"[[link|display]]"`,
+  YamlInternalLink("display", "link"),
+)
+parseTest("boolean - true", boolean, "true", YamlBoolean(true))
+parseTest("boolean - false", boolean, "false", YamlBoolean(false))
+parseTest(
+  "link",
+  link,
+  "[website](https://madlib.space)",
+  YamlLink("website", "https://madlib.space"),
+)

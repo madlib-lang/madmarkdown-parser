@@ -1,0 +1,14 @@
+import { always } from "Function"
+import {} from "Functor"
+import P from "Parse"
+
+
+
+export NOTHING = always("")
+export blank = map(NOTHING)
+export end = blank(P.eof)
+
+export SPACE = P.char(' ')
+
+singleReturnTerminal :: P.Parser String
+export singleReturnTerminal = alt(P.string("\n"), end)

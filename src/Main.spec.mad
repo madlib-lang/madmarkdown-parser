@@ -53,7 +53,6 @@ import {
   orderedList,
   paragraph,
   parseMarkdown,
-  singleReturnTerminal,
   text,
   textTerminals,
   ulistItemStart,
@@ -82,6 +81,24 @@ test(
 )
 */
 
+test(
+  "smoke testing",
+  () => do {
+    numdot = P.someTill(P.digit, P.char('.'))
+    digits = P.some(P.digit)
+    // _ <- testParser(P.someTill(P.digit, P.lookAhead(P.char('.'))), "02.", [])
+    // _ <- testParser(alt(P.char('a'), P.lookAhead(P.anyChar)), "ab", 'a')
+    // _ <- testParser(alt(digits, P.lookAhead(P.char('.'))), "1.", "1.")
+    _ <- testParser(map(always("digimon"), digits), "102932092", "digimon")
+    _ <- testParser(map(always("digimon many"), P.many(P.digit)), "102932092", "digimon many")
+    _ <- testParser(map(always("period!"), P.char('.')), ".", "period!")
+    _ <- testParser(map(always(""), digits), "1", "")
+    // this fails to parse
+    // _ <- testParser(map(always(""), numdot), "1.", "")
+    // _ <- testParser(map(always(""), numdot), "93031.", "")
+    return testParser(map(always(""), digits), "1", "")
+  },
+)
 
 test(
   "linkCharacter",
@@ -120,6 +137,7 @@ parseTest(
   OrderedList([[Text("Hooray")], [Text("Nice")], [Text("Dope")]]),
 )
 */
+
 parseTest(
   "unorderedList",
   unorderedList,
@@ -220,6 +238,7 @@ PARSED_FIXTURE = [
     LineReturn,
   ]),
 ]
+
 /*
 test(
   "markdownParser",
@@ -229,7 +248,7 @@ test(
     chain((FIXTURE) => testParser(markdownParser, FIXTURE, PARSED_FIXTURE)),
   )("./FIXTURE.md"),
 )
-/*
+
 test(
   "parseMarkdown",
   () => pipe(
@@ -254,7 +273,7 @@ test(
   )("./FIXTURE.md"),
 )
 
-/*
+// /*
 test(
   "parseMarkdown on real example file",
   () => pipe(

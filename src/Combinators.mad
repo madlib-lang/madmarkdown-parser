@@ -3,7 +3,7 @@ import type { Parser } from "Parse"
 import { apL } from "Applicative"
 import { identity } from "Function"
 import { mapL } from "Functor"
-import { lookAhead, someTill } from "Parse"
+import { lookAhead, manyTill } from "Parse"
 
 
 
@@ -13,6 +13,3 @@ export between = (start, mid, end) => pipe(
   ap($, mid),
   apL($, end),
 )(start)
-
-someUntil :: Parser a -> Parser b -> Parser (List a)
-export someUntil = (prefix, suffix) => someTill(prefix, lookAhead(suffix))
