@@ -1,6 +1,8 @@
 import type { Either } from "Either"
 import type { Maybe } from "Maybe"
 
+import type { YamlData, YamlPair } from "@/Yaml"
+
 import { apL } from "Applicative"
 import { mapLeft } from "Either"
 import { always, equals, identity } from "Function"
@@ -13,6 +15,7 @@ import String from "String"
 import { between } from "@/Combinators"
 import { linkCharacter } from "@/Link"
 import { NOTHING, SPACE, blank, end, singleReturnTerminal } from "@/Shared"
+import { yamlPair } from "@/Yaml"
 
 
 
@@ -24,6 +27,7 @@ export type ContentPart
   | Link(String, String)
   | InternalLink(String, String)
   | Image(String, String)
+  | Yaml(YamlPair)
   | LineReturn
 
 export alias Content = List ContentPart
@@ -40,6 +44,8 @@ export type Block
   | Code(String, String)
   | UnorderedList(List Content)
   | OrderedList(List Content)
+  | YamlBlock(Content)
+
 
 export alias Markdown = List Block
 
@@ -113,6 +119,17 @@ export shortInternalLink = do {
 
 internalLink :: P.Parser ContentPart
 export internalLink = P.choice([shortInternalLink, internalLinkWithDisplay])
+/*
+yaml :: P.Parser ContentPart
+export yaml = do {
+  data <- between(P.string("---"), P.some(yamlPair), P.string("---"))
+  return pipe(
+    Yaml,
+    of,
+    YamlBlock,
+  )(data)
+}
+*/
 
 inlineCode :: P.Parser ContentPart
 export inlineCode = pipe(
@@ -328,6 +345,7 @@ export paragraph = pipe(
 
 block :: P.Parser Block
 export block = P.choice([
+  // yaml,
   heading(H6, "######"),
   heading(H5, "#####"),
   heading(H4, "####"),

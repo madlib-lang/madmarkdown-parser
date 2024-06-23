@@ -1,4 +1,7 @@
 import { Left, Right } from "Either"
+import File from "File"
+import { always } from "Function"
+import IO from "IO"
 import Parse from "Parse"
 import Test from "Test"
 import Wish from "Wish"
@@ -27,4 +30,20 @@ parseTest :: (Show a, Eq a) => String
 export parseTest = (testName, parser, toParse, expected) => Test.test(
   testName,
   () => testParser(parser, toParse, expected),
+)
+
+parseFile :: (Show a, Eq a) => String
+  -> String
+  -> Parse.Parser a
+  -> a
+  -> Wish Test.TestResult Test.TestResult
+export parseFile = (filePath, testName, parser, expected) => Test.test(
+  testName,
+  () => pipe(
+    IO.pTrace("reading file..."),
+    File.read,
+    IO.pTrace("read file!"),
+    Wish.mapRej(always(TestError("File reading error"))),
+    chain((FIXTURE) => testParser(parser, FIXTURE, expected)),
+  )(filePath),
 )

@@ -12,7 +12,7 @@ assertEquals = Test.assertEquals
 test = Test.test
 TestError = Test.Error
 
-import { parseTest, testParser } from "@/Test"
+import { parseFile, parseTest, testParser } from "@/Test"
 import {
   YamlBoolean,
   YamlFloat,
@@ -73,3 +73,5 @@ parseTest(
   "[website](https://madlib.space)",
   YamlLink("website", "https://madlib.space"),
 )
+
+parseFile("./YAML_FIXTURE.yaml", "parse yaml file", yamlContent, [])
