@@ -147,16 +147,14 @@ export float = do {
   )(`${show(num)}.${show(floating)}`)
 }
 
-export text = pipe(
-  P.someTill($, P.lookAhead(P.char('\n'))),
-  map(
-    pipe(
-      String.fromList,
-      String.trim,
-      YamlString,
-    ),
+export text = map(
+  pipe(
+    String.fromList,
+    String.trim,
+    YamlString,
   ),
-)(P.notChar('\n'))
+  P.many(P.notChar('\n')),
+)
 
 export yamlSingleContent = P.choice([link, internalLink, integer, float, boolean, text])
 

@@ -7,6 +7,7 @@ import P from "Parse"
 export NOTHING = always("")
 export blank = map(NOTHING)
 export end = blank(P.eof)
+export lineEnd = P.choice([end, blank(P.char('\n'))])
 
 export SPACE = P.char(' ')
 

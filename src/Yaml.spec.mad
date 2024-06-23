@@ -36,15 +36,21 @@ import {
 
 
 // parseTest("yamlPair", yamlPair, "cool: nice\n", YamlPair("cool", YamlString("nice")))
+// parseTest("yamlPair", yamlPair, "cool: true\n", YamlPair("cool", YamlBoolean(true)))
 test(
   "yamlSingleContent",
   () => do {
     run = testParser(yamlSingleContent)
-    return run("whatever whatever ", YamlString("whatever whatever"))
+    // _ <- run("whatever whatever ", YamlString("whatever whatever"))
+    // _ <- run("true", YamlBoolean(true))
+    // _ <- run("false", YamlBoolean(false))
+    _ <- run("39309402334827", YamlInteger(39309402334827))
+    // _ <- run("209392002.3992", YamlFloat(209392002.3992))
+    _ <- run(`"[[whatever]]"`, YamlInternalLink("whatever", "whatever"))
+    return run("[website](https://website.biz)", YamlLink("website", "https://website.biz"))
   },
 )
 parseTest("text", text, "whatever whatever ", YamlString("whatever whatever"))
-
 parseTest("float", float, "209392002.3992", YamlFloat(209392002.3992))
 parseTest("integer", integer, "13902291", YamlInteger(13902291))
 parseTest(
