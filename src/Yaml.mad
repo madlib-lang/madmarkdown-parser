@@ -15,7 +15,7 @@ import String from "String"
 
 import { between } from "@/Combinators"
 import { linkCharacter } from "@/Link"
-import { SPACE, blank, singleReturnTerminal } from "@/Shared"
+import { SPACE, blank, end, singleReturnTerminal } from "@/Shared"
 
 
 
@@ -138,7 +138,7 @@ float :: P.Parser YamlValue
 export float = do {
   num <- numeric(P.manyTill(P.digit, P.lookAhead(P.char('.'))))
   _ <- P.char('.')
-  floating <- numeric(P.manyTill(P.digit, P.lookAhead(P.char('\n'))))
+  floating <- numeric(P.manyTill(P.digit, singleReturnTerminal))
   return pipe(
     scan,
     fromMaybe(0),
@@ -147,18 +147,27 @@ export float = do {
   )(`${show(num)}.${show(floating)}`)
 }
 
+export textTerminals = P.choice([
+  blank(boolean),
+  blank(internalLink),
+  blank(link),
+  blank(float),
+  blank(integer),
+  end,
+  P.string("\n"),
+])
+
 export text = map(
   pipe(
     String.fromList,
     String.trim,
+    IO.pTrace("TRIM TRAM"),
     YamlString,
   ),
-  P.many(P.notChar('\n')),
+  P.someTill(P.notChar('\n'), textTerminals),
 )
 
-export yamlSingleContent = P.choice([link, internalLink, integer, float, boolean, text])
-
-
+export yamlSingleContent = P.choice([boolean, link, internalLink, float, integer, text])
 
 export list = pipe(
   chain(always(apL(yamlSingleContent, singleReturnTerminal))),
@@ -166,7 +175,14 @@ export list = pipe(
 
 yamlPair :: P.Parser YamlPair
 export yamlPair = do {
-  key <- map(String.fromList, P.manyTill(P.choice([P.letter, P.digit]), P.lookAhead(P.char(':'))))
+  key <- map(
+    pipe(
+      String.fromList,
+      String.trim,
+    ),
+    P.manyTill(P.anyChar, singleReturnTerminal),
+  )
+  IO.pTrace("KEY", key)
   value <- between(P.char(':'), yamlSingleContent, P.char('\n'))
   return pipe(
     YamlPair(key, $),
