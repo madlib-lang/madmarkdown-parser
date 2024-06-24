@@ -1,0 +1,372 @@
+import type { Either } from "Either"
+import type { Maybe } from "Maybe"
+
+import type { YamlData, YamlPair } from "@/Yaml"
+
+import { apL } from "Applicative"
+import { mapLeft } from "Either"
+import { always, equals, identity } from "Function"
+import { mapL } from "Functor"
+import { dropWhile, mapMaybe } from "List"
+import { Just, Nothing } from "Maybe"
+import P from "Parse"
+import String from "String"
+
+import { between } from "@/Combinators"
+import { linkCharacter } from "@/Link"
+import { NOTHING, SPACE, blank, end, singleReturnTerminal } from "@/Shared"
+import { yamlPair } from "@/Yaml"
+
+
+
+export type ContentPart
+  = Text(String)
+  | Bold(String)
+  | Italic(String)
+  | InlineCode(String)
+  | Link(String, String)
+  | InternalLink(String, String)
+  | Image(String, String)
+  | Yaml(YamlPair)
+  | LineReturn
+
+export alias Content = List ContentPart
+
+export type Block
+  = H1(Content)
+  | H2(Content)
+  | H3(Content)
+  | H4(Content)
+  | H5(Content)
+  | H6(Content)
+  | Paragraph(Content)
+  | Blockquote(Content)
+  | Code(String, String)
+  | UnorderedList(List Content)
+  | OrderedList(List Content)
+  | YamlBlock(Content)
+
+
+export alias Markdown = List Block
+
+
+boldDelimiter = P.choice([P.string("**"), P.string("__")])
+
+bold :: P.Parser ContentPart
+export bold = pipe(
+  mapL(Bold),
+  ap(
+    $,
+    pipe(
+      (a) => P.someTill(a, P.lookAhead(boldDelimiter)),
+      map(String.fromList),
+    )(P.notChar('\n')),
+  ),
+  apL($, boldDelimiter),
+)(boldDelimiter)
+
+italicDelimiter = P.choice([P.char('*'), P.char('_')])
+
+italic :: P.Parser ContentPart
+export italic = do {
+  _ <- italicDelimiter
+  firstChar <- P.notChar(' ')
+  nextChars <- P.many(P.notOneOf(['_', '*', '\n']))
+  _ <- italicDelimiter
+
+  return pipe(
+    String.fromList,
+    Italic,
+    of,
+  )([firstChar, ...nextChars])
+}
+
+// https://help.obsidian.md/Linking+notes+and+files/Internal+links
+// [[01 - Hello mad, mad world#Installation|Installing]]
+internalLinkWithDisplay :: P.Parser ContentPart
+export internalLinkWithDisplay = do {
+  _ <- P.string("[[")
+  url <- pipe(
+    P.many,
+    map(String.fromList),
+  )(linkCharacter)
+  _ <- P.char('|')
+  displayText <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string("]]"))
+  _ <- P.string("]]")
+  return pipe(
+    InternalLink(displayText),
+    of,
+  )(url)
+}
+
+// [[02 - Cool data for lyfe]]
+shortInternalLink :: P.Parser ContentPart
+export shortInternalLink = do {
+  _ <- P.string("[[")
+  ref <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string("]]"))
+  _ <- P.string("]]")
+  return pipe(
+    InternalLink(ref),
+    of,
+  )(ref)
+}
+
+internalLink :: P.Parser ContentPart
+export internalLink = P.choice([shortInternalLink, internalLinkWithDisplay])
+/*
+yaml :: P.Parser ContentPart
+export yaml = do {
+  data <- between(P.string("---"), P.some(yamlPair), P.string("---"))
+  return pipe(
+    Yaml,
+    of,
+    YamlBlock,
+  )(data)
+}
+*/
+
+inlineCode :: P.Parser ContentPart
+export inlineCode = pipe(
+  mapL(InlineCode),
+  ap(
+    $,
+    pipe(
+      P.many,
+      map(String.fromList),
+    )(P.notOneOf(['`', '\n'])),
+  ),
+  apL($, P.char('`')),
+)(P.char('`'))
+
+link :: P.Parser ContentPart
+export link = pipe(
+  map(Link),
+  ap(
+    $,
+    between(
+      P.char('('),
+      pipe(
+        P.many,
+        map(String.fromList),
+      )(linkCharacter),
+      P.char(')'),
+    ),
+  ),
+)(
+  between(
+    P.char('['),
+    pipe(
+      P.many,
+      map(String.fromList),
+    )(P.notOneOf([']', '\n'])),
+    P.char(']'),
+  ),
+)
+
+image :: P.Parser ContentPart
+export image = pipe(
+  mapL(Image),
+  ap(
+    $,
+    between(
+      P.char('['),
+      pipe(
+        P.many,
+        map(String.fromList),
+      )(P.notOneOf([']', '\n'])),
+      P.char(']'),
+    ),
+  ),
+  ap(
+    $,
+    between(
+      P.char('('),
+      pipe(
+        P.many,
+        map(String.fromList),
+      )(linkCharacter),
+      P.char(')'),
+    ),
+  ),
+)(P.char('!'))
+
+textTerminals :: P.Parser String
+export textTerminals = P.choice([
+  blank(internalLink),
+  blank(bold),
+  blank(italic),
+  blank(inlineCode),
+  blank(image),
+  blank(link),
+  end,
+  P.string("\n"),
+])
+
+text :: P.Parser ContentPart
+export text = pipe(
+  P.someTill($, P.lookAhead(textTerminals)),
+  map(
+    pipe(
+      String.fromList,
+      Text,
+    ),
+  ),
+)(P.notChar('\n'))
+
+lineReturn :: P.Parser ContentPart
+export lineReturn = map(always(LineReturn), P.char('\n'))
+
+content :: P.Parser Content
+export content = pipe(
+  P.choice,
+  P.many,
+)([internalLink, bold, italic, inlineCode, image, link, text])
+
+coerceEmpty :: Maybe a -> P.Parser ContentPart
+export coerceEmpty = pipe(
+  where {
+    Just(_) =>
+      aempty
+
+    Nothing =>
+      lineReturn
+  },
+)
+
+lineReturnExceptBefore :: P.Parser a -> P.Parser ContentPart
+export lineReturnExceptBefore = (before) => pipe(
+  mapL(identity),
+  ap($, alt(map(always(Just({})), before), pure(Nothing))),
+  P.lookAhead,
+  chain(coerceEmpty),
+)(lineReturn)
+
+contentWithLineReturn :: P.Parser a -> P.Parser Content
+export contentWithLineReturn = (delimiter) => pipe(
+  P.choice,
+  P.some,
+  map(dropWhile(equals(LineReturn))),
+)([internalLink, bold, italic, inlineCode, image, link, text, lineReturnExceptBefore(delimiter)])
+
+heading :: (Content -> Block) -> String -> P.Parser Block
+export heading = (constructor) => pipe(
+  P.symbol,
+  mapL(constructor),
+  ap($, content),
+  apL($, singleReturnTerminal),
+)
+
+
+doubleReturnTerminal :: P.Parser String
+export doubleReturnTerminal = P.choice([
+  P.string("\n\n"),
+  end,
+  pipe(
+    ap(pure((_, _) => "")),
+    ap($, P.eof),
+  )(P.char('\n')),
+])
+
+code :: P.Parser Block
+export code = pipe(
+  mapL(Code),
+  ap($, alt(map(String.fromList, P.letters), pure(""))),
+  apL($, P.char('\n')),
+  ap($, map(String.fromList, P.manyTill(P.anyChar, P.lookAhead(P.string("\n```"))))),
+  apL($, P.choice([map((_) => "", apL(P.string("\n```"), P.eof)), P.string("\n```\n")])),
+)(P.string("```"))
+
+blockquote :: P.Parser Block
+export blockquote = pipe(
+  mapL(Blockquote),
+  ap($, contentWithLineReturn(P.choice([P.string("\n"), P.string("```"), P.string(">")]))),
+  apL(
+    $,
+    P.choice([doubleReturnTerminal, P.lookAhead(P.string("\n```")), P.lookAhead(P.string("\n>"))]),
+  ),
+)(alt(P.symbol(">"), P.string(">")))
+
+listItemStart :: P.Parser a -> P.Parser Content
+export listItemStart = (starter) => pipe(
+  chain(always(apL(content, singleReturnTerminal))),
+)(starter)
+
+export olistItemStart = blank(
+  apL(P.many(SPACE), apL(P.someTill(P.digit, P.char('.')), P.some(SPACE))),
+)
+
+orderedListItem :: P.Parser Content
+export orderedListItem = listItemStart(olistItemStart)
+
+orderedList :: P.Parser Block
+export orderedList = pipe(
+  P.some,
+  map(OrderedList),
+)(orderedListItem)
+
+export ulistItemStart = blank(apL(P.many(SPACE), apL(P.oneOf(['*', '-', '+']), P.some(SPACE))))
+
+unorderedListItem :: P.Parser Content
+export unorderedListItem = listItemStart(ulistItemStart)
+
+unorderedList :: P.Parser Block
+export unorderedList = pipe(
+  P.some,
+  map(UnorderedList),
+)(unorderedListItem)
+
+markdownList :: P.Parser Block
+export markdownList = P.choice([orderedList, unorderedList])
+
+paragraph :: P.Parser Block
+export paragraph = pipe(
+  map(Paragraph),
+  apL(
+    $,
+    P.choice([
+      doubleReturnTerminal,
+      P.lookAhead(P.string("\n```")),
+      P.lookAhead(P.string("\n>")),
+      P.lookAhead(apL(P.string("\n"), olistItemStart)),
+      P.lookAhead(apL(P.string("\n"), ulistItemStart)),
+    ]),
+  ),
+)(
+  contentWithLineReturn(
+    P.choice([P.string("\n"), P.string("```"), P.string(">"), olistItemStart, ulistItemStart]),
+  ),
+)
+
+block :: P.Parser Block
+export block = P.choice([
+  // yaml,
+  heading(H6, "######"),
+  heading(H5, "#####"),
+  heading(H4, "####"),
+  heading(H3, "###"),
+  heading(H2, "##"),
+  heading(H1, "#"),
+  markdownList,
+  blockquote,
+  code,
+  paragraph,
+])
+
+markdownParser :: P.Parser Markdown
+export markdownParser = pipe(
+  P.choice,
+  P.many,
+  map(mapMaybe(identity)),
+)([map(always(Nothing), P.spaces), map(Just, block)])
+
+parseMarkdown :: String -> Either String Markdown
+export parseMarkdown = pipe(
+  P.runParser(markdownParser),
+  mapLeft(always("Malformed markdown input")),
+)

@@ -158,10 +158,7 @@ export text = map(
 
 export yamlSingleContent = P.choice([link, internalLink, integer, float, boolean, text])
 
-export yamlContent = pipe(
-  P.choice,
-  P.many,
-)([link, internalLink, integer, float, boolean, text])
+
 
 export list = pipe(
   chain(always(apL(yamlSingleContent, singleReturnTerminal))),
@@ -176,3 +173,5 @@ export yamlPair = do {
     of,
   )(value)
 }
+
+export yamlContent = P.many(yamlPair)

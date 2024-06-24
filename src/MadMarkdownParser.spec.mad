@@ -58,7 +58,7 @@ import {
   ulistItemStart,
   unorderedList,
   unorderedListItem,
-} from "./Main"
+} from "./MadMarkdownParser"
 import { linkCharacter } from "@/Link"
 import { parseTest, testParser } from "@/Test"
 

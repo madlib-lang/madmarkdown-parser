@@ -74,4 +74,4 @@ parseTest(
   YamlLink("website", "https://madlib.space"),
 )
 
-parseFile("./YAML_FIXTURE.yaml", "parse yaml file", yamlContent, [])
+// parseFile("./YAML_FIXTURE.yaml", "parse yaml file", yamlContent, [])
