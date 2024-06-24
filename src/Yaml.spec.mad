@@ -55,7 +55,7 @@ test(
   () => do {
     run = testParser(text)
     _ <- run("whatever whatever ", YamlString("whatever whatever"))
-    _ <- run("200.399", YamlString("200.399"))
+    _ <- run("costs 200.399", YamlString("costs 200.399"))
     return run("12932929", YamlString("12932929"))
   },
 )

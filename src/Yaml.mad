@@ -147,15 +147,7 @@ export float = do {
   )(`${show(num)}.${show(floating)}`)
 }
 
-export textTerminals = P.choice([
-  blank(boolean),
-  blank(internalLink),
-  blank(link),
-  blank(float),
-  blank(integer),
-  end,
-  P.string("\n"),
-])
+export textTerminals = P.choice([end, P.string("\n")])
 
 export text = map(
   pipe(
@@ -180,7 +172,7 @@ export yamlPair = do {
       String.fromList,
       String.trim,
     ),
-    P.manyTill(P.anyChar, singleReturnTerminal),
+    P.manyTill(P.anyChar, P.lookAhead(P.char(':'))),
   )
   IO.pTrace("KEY", key)
   value <- between(P.char(':'), yamlSingleContent, P.char('\n'))
