@@ -35,12 +35,14 @@ import {
 
 
 
-// parseTest("yamlPair", yamlPair, "cool: nice\n", YamlPair("cool", YamlString("nice")))
+parseTest("yamlPair - newline", yamlPair, "cool: nice\n", YamlPair("cool", YamlString("nice")))
+parseTest("yamlPair - eof", yamlPair, "cool: nice", YamlPair("cool", YamlString("nice")))
+parseTest("yamlPair - boolean", yamlPair, "cool: true", YamlPair("cool", YamlBoolean(true)))
 test(
   "yamlSingleContent",
   () => do {
     run = testParser(yamlSingleContent)
-    // _ <- run("whatever whatever ", YamlString("whatever whatever"))
+    _ <- run("whatever whatever ", YamlString("whatever whatever"))
     _ <- run("true", YamlBoolean(true))
     _ <- run("false", YamlBoolean(false))
     _ <- run("39309402334827", YamlInteger(39309402334827))

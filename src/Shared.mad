@@ -13,3 +13,6 @@ export SPACE = P.char(' ')
 
 singleReturnTerminal :: P.Parser String
 export singleReturnTerminal = alt(P.string("\n"), end)
+
+maybeMinus :: P.Parser (List Char)
+export maybeMinus = map(of, P.char('-')) <|> pure([])

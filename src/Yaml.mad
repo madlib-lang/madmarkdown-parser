@@ -15,7 +15,7 @@ import String from "String"
 
 import { between } from "@/Combinators"
 import { linkCharacter } from "@/Link"
-import { SPACE, blank, end, singleReturnTerminal } from "@/Shared"
+import { SPACE, blank, end, maybeMinus, singleReturnTerminal } from "@/Shared"
 
 
 
@@ -98,25 +98,11 @@ export internalLinkWithDisplay = do {
 internalLink :: P.Parser YamlValue
 export internalLink = P.choice([internalLinkWithDisplay, shortInternalLink])
 
-boolTrue :: P.Parser YamlValue
-export boolTrue = do {
-  matched <- P.string("true")
-  return pipe(
-    YamlBoolean,
-    of,
-  )(true)
-}
-
-boolFalse :: P.Parser YamlValue
-export boolFalse = do {
-  matched <- P.string("false")
-  return pipe(
-    YamlBoolean,
-    of,
-  )(false)
-}
-
-export boolean = P.choice([boolTrue, boolFalse])
+boolean :: P.Parser YamlValue
+export boolean = pipe(
+  alt(map(always(false), P.symbol("false"))),
+  map(YamlBoolean),
+)(map(always(true), P.symbol("true")))
 
 numeric = map(
   pipe(
@@ -128,23 +114,30 @@ numeric = map(
 
 integer :: P.Parser YamlValue
 export integer = do {
-  num <- numeric(P.manyTill(P.digit, P.lookAhead(P.char('\n'))))
+  minus <- maybeMinus
+  digits <- P.some(P.digit)
   return pipe(
+    String.fromList,
+    scan,
+    fromMaybe(0),
     YamlInteger,
     of,
-  )(num)
+  )([...minus, ...digits])
 }
 float :: P.Parser YamlValue
 export float = do {
-  num <- numeric(P.manyTill(P.digit, P.lookAhead(P.char('.'))))
-  _ <- P.char('.')
-  floating <- numeric(P.manyTill(P.digit, singleReturnTerminal))
+  minus <- maybeMinus
+  whole <- P.some(P.digit)
+  dot <- P.char('.')
+  fraction <- P.some(P.digit)
+
   return pipe(
+    String.fromList,
     scan,
     fromMaybe(0),
     YamlFloat,
     of,
-  )(`${show(num)}.${show(floating)}`)
+  )([...minus, ...whole, dot, ...fraction])
 }
 
 export textTerminals = P.choice([end, P.string("\n")])
@@ -156,7 +149,7 @@ export text = map(
     IO.pTrace("TRIM TRAM"),
     YamlString,
   ),
-  P.someTill(P.notChar('\n'), textTerminals),
+  P.someTill(P.anyChar, textTerminals),
 )
 
 export yamlSingleContent = P.choice([boolean, link, internalLink, float, integer, text])
@@ -165,17 +158,45 @@ export list = pipe(
   chain(always(apL(yamlSingleContent, singleReturnTerminal))),
 )(blank(apL(P.many(SPACE), apL(P.char('-'), P.some(SPACE)))))
 
+alphanumeric :: Parser String
+alphanumeric = do {
+  firstChar <- P.letter
+  rest <- P.many(P.choice([P.letter, P.digit]))
+  return pipe(
+    String.fromList,
+    of,
+  )([firstChar, ...rest])
+}
+
+/*
+alphaNumericalName :: Parser String
+alphaNumericalName = do {
+  firstChar <- Parse.letter
+  rest <- Parse.many(Parse.choice([Parse.letter, Parse.digit]))
+
+  return pipe(
+    String.fromList,
+    of,
+  )([firstChar, ...rest])
+}
+
+recordField :: Parser #[String, Value]
+recordField = do {
+  fieldName <- Parse.token(alphaNumericalName)
+  _ <- Parse.symbol(":")
+  fieldValue <- Parse.token(value)
+
+  return of(#[fieldName, fieldValue])
+}
+*/
+
 yamlPair :: P.Parser YamlPair
 export yamlPair = do {
-  key <- map(
-    pipe(
-      String.fromList,
-      String.trim,
-    ),
-    P.manyTill(P.anyChar, P.lookAhead(P.char(':'))),
-  )
+  key <- P.token(alphanumeric)
   IO.pTrace("KEY", key)
-  value <- between(P.char(':'), yamlSingleContent, P.char('\n'))
+  _ <- P.symbol(":")
+  value <- P.token(yamlSingleContent)
+  IO.pTrace("VALUE", value)
   return pipe(
     YamlPair(key, $),
     of,
