@@ -6,11 +6,6 @@ import Parse from "Parse"
 import Test from "Test"
 import Wish from "Wish"
 
-
-
-assertEquals = Test.assertEquals
-test = Test.test
-TestError = Test.Error
 import {
   Blockquote,
   Bold,
@@ -63,6 +58,10 @@ import { linkCharacter } from "@/Link"
 import { parseTest, testParser } from "@/Test"
 
 
+
+assertEquals = Test.assertEquals
+test = Test.test
+TestError = Test.Error
 
 test(
   "ulistItemStart",
@@ -239,7 +238,6 @@ PARSED_FIXTURE = [
   ]),
 ]
 
-/*
 test(
   "markdownParser",
   () => pipe(
@@ -248,6 +246,7 @@ test(
     chain((FIXTURE) => testParser(markdownParser, FIXTURE, PARSED_FIXTURE)),
   )("./FIXTURE.md"),
 )
+/*
 
 test(
   "parseMarkdown",

@@ -2,6 +2,7 @@ import type { Either } from "Either"
 import type { Maybe } from "Maybe"
 
 import type { YamlData, YamlPair } from "@/Yaml"
+import type { YamlValue } from "@/Yaml"
 
 import { apL } from "Applicative"
 import { mapLeft } from "Either"
@@ -15,7 +16,7 @@ import String from "String"
 import { between } from "@/Combinators"
 import { linkCharacter } from "@/Link"
 import { NOTHING, SPACE, blank, end, singleReturnTerminal } from "@/Shared"
-import { yamlPair } from "@/Yaml"
+import { markYaml } from "@/Yaml"
 
 
 
@@ -27,7 +28,7 @@ export type ContentPart
   | Link(String, String)
   | InternalLink(String, String)
   | Image(String, String)
-  | Yaml(YamlPair)
+  | Yaml(Dictionary String YamlValue)
   | LineReturn
 
 export alias Content = List ContentPart
@@ -119,17 +120,6 @@ export shortInternalLink = do {
 
 internalLink :: P.Parser ContentPart
 export internalLink = P.choice([shortInternalLink, internalLinkWithDisplay])
-/*
-yaml :: P.Parser ContentPart
-export yaml = do {
-  data <- between(P.string("---"), P.some(yamlPair), P.string("---"))
-  return pipe(
-    Yaml,
-    of,
-    YamlBlock,
-  )(data)
-}
-*/
 
 inlineCode :: P.Parser ContentPart
 export inlineCode = pipe(
@@ -222,11 +212,20 @@ export text = pipe(
 lineReturn :: P.Parser ContentPart
 export lineReturn = map(always(LineReturn), P.char('\n'))
 
+yaml :: P.Parser ContentPart
+yaml = do {
+  data <- markYaml
+  return pipe(
+    Yaml,
+    of,
+  )(data)
+}
+
 content :: P.Parser Content
 export content = pipe(
   P.choice,
   P.many,
-)([internalLink, bold, italic, inlineCode, image, link, text])
+)([yaml, internalLink, bold, italic, inlineCode, image, link, text])
 
 coerceEmpty :: Maybe a -> P.Parser ContentPart
 export coerceEmpty = pipe(
@@ -252,7 +251,17 @@ export contentWithLineReturn = (delimiter) => pipe(
   P.choice,
   P.some,
   map(dropWhile(equals(LineReturn))),
-)([internalLink, bold, italic, inlineCode, image, link, text, lineReturnExceptBefore(delimiter)])
+)([
+  yaml,
+  internalLink,
+  bold,
+  italic,
+  inlineCode,
+  image,
+  link,
+  text,
+  lineReturnExceptBefore(delimiter),
+])
 
 heading :: (Content -> Block) -> String -> P.Parser Block
 export heading = (constructor) => pipe(
@@ -343,9 +352,18 @@ export paragraph = pipe(
   ),
 )
 
+yamlBlock :: P.Parser Block
+export yamlBlock = do {
+  parsed <- yaml
+  return pipe(
+    of,
+    YamlBlock,
+    of,
+  )(parsed)
+}
+
 block :: P.Parser Block
 export block = P.choice([
-  // yaml,
   heading(H6, "######"),
   heading(H5, "#####"),
   heading(H4, "####"),
@@ -356,6 +374,7 @@ export block = P.choice([
   blockquote,
   code,
   paragraph,
+  yamlBlock,
 ])
 
 markdownParser :: P.Parser Markdown
