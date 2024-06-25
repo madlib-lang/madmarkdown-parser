@@ -1,0 +1,148 @@
+import Dict from "Dictionary"
+import { Left, Right } from "Either"
+import File from "File"
+import { always } from "Function"
+import P from "Parse"
+import Parse from "Parse"
+import Test from "Test"
+import Wish from "Wish"
+
+
+
+assertEquals = Test.assertEquals
+test = Test.test
+TestError = Test.Error
+
+import { parseFile, parseTest, testParser } from "@/Test"
+import {
+  YamlBoolean,
+  YamlFloat,
+  YamlInteger,
+  YamlInternalLink,
+  YamlLink,
+  YamlList,
+  YamlPair,
+  YamlString,
+  boolean,
+  float,
+  integer,
+  internalLink,
+  internalLinkWithDisplay,
+  link,
+  text,
+  yaml,
+  yamlContent,
+  yamlList,
+  yamlPair,
+  yamlSingleContent,
+} from "@/Yaml"
+
+
+
+parseTest("yamlPair - newline", yamlPair, "cool: nice\n", YamlPair("cool", YamlString("nice")))
+parseTest("yamlPair - eof", yamlPair, "cool: nice", YamlPair("cool", YamlString("nice")))
+parseTest("yamlPair - boolean", yamlPair, "cool: true", YamlPair("cool", YamlBoolean(true)))
+test(
+  "yamlSingleContent",
+  () => do {
+    run = testParser(yamlSingleContent)
+    _ <- run("whatever whatever ", YamlString("whatever whatever"))
+    _ <- run("true", YamlBoolean(true))
+    _ <- run("false", YamlBoolean(false))
+    _ <- run("39309402334827", YamlInteger(39309402334827))
+    _ <- run("209392002.3992", YamlFloat(209392002.3992))
+    _ <- run(`"[[whatever]]"`, YamlInternalLink("whatever", "whatever"))
+    _ <- run(`"[[whatever|whenever]]"`, YamlInternalLink("whenever", "whatever"))
+    return run("[website](https://website.biz)", YamlLink("website", "https://website.biz"))
+  },
+)
+
+parseTest(
+  "yamlList",
+  yamlList,
+  ` - a
+ - b
+ - c`,
+  YamlList([YamlString("a"), YamlString("b"), YamlString("c")]),
+)
+test(
+  "yaml",
+  () => do {
+    FIRST_CASE = `a: yo
+b: true
+c: false
+d: 123850.23
+e: 240
+f: [link](site)
+g: "[[hoho|yoyo]]"`
+    parseYaml = testParser(yaml)
+    return parseYaml(
+      FIRST_CASE,
+      {{
+        "a": YamlString("yo"),
+        "b": YamlBoolean(true),
+        "c": YamlBoolean(false),
+        "d": YamlFloat(123850.23),
+        "e": YamlInteger(240),
+        "f": YamlLink("link", "site"),
+        "g": YamlInternalLink("yoyo", "hoho"),
+      }},
+    )
+    /*
+        return parseYaml(
+          FIRST_CASE
+            ++ `
+    h:
+     - i
+     - j
+     - k`,
+          {{
+            "a": YamlString("yo"),
+            "b": YamlBoolean(true),
+            "c": YamlBoolean(false),
+            "d": YamlFloat(123850.23),
+            "e": YamlInteger(240),
+            "f": YamlLink("link", "site"),
+            "g": YamlInternalLink("yoyo", "hoho"),
+            "h": YamlList([YamlString("i"), YamlString("j"), YamlString("k")]),
+          }},
+        )
+        */
+  },
+)
+
+// parseFile("./YAML_FIXTURE.yaml", "yaml fixture", yaml, {{}})
+
+test(
+  "text",
+  () => do {
+    run = testParser(text)
+    _ <- run("whatever whatever ", YamlString("whatever whatever"))
+    _ <- run("costs 200.399", YamlString("costs 200.399"))
+    return run("12932929", YamlString("12932929"))
+  },
+)
+parseTest("float", float, "209392002.3992", YamlFloat(209392002.3992))
+parseTest("integer", integer, "13902291", YamlInteger(13902291))
+parseTest(
+  "internalLink - short",
+  internalLink,
+  `"[[heynow]]"`,
+  YamlInternalLink("heynow", "heynow"),
+)
+parseTest(
+  "internalLink - long",
+  internalLink,
+  `"[[link|display]]"`,
+  YamlInternalLink("display", "link"),
+)
+parseTest("boolean - true", boolean, "true", YamlBoolean(true))
+parseTest("boolean - false", boolean, "false", YamlBoolean(false))
+parseTest(
+  "link",
+  link,
+  "[website](https://madlib.space)",
+  YamlLink("website", "https://madlib.space"),
+)
+
+// parseFile("./YAML_FIXTURE.yaml", "parse yaml file", yamlContent, [])

@@ -1,0 +1,313 @@
+import { Left, Right } from "Either"
+import File from "File"
+import { always } from "Function"
+import IO from "IO"
+import P from "Parse"
+import Parse from "Parse"
+import Test from "Test"
+import Wish from "Wish"
+
+import {
+  Blockquote,
+  Bold,
+  Code,
+  H1,
+  H2,
+  H3,
+  H4,
+  H5,
+  H6,
+  Image,
+  InlineCode,
+  InternalLink,
+  Italic,
+  LineReturn,
+  Link,
+  OrderedList,
+  Paragraph,
+  Text,
+  UnorderedList,
+  block,
+  blockquote,
+  bold,
+  code,
+  coerceEmpty,
+  content,
+  contentWithLineReturn,
+  doubleReturnTerminal,
+  heading,
+  image,
+  inlineCode,
+  internalLink,
+  italic,
+  lineReturn,
+  lineReturnExceptBefore,
+  link,
+  listItemStart,
+  markdownParser,
+  olistItemStart,
+  orderedList,
+  orderedListItem,
+  paragraph,
+  parseMarkdown,
+  text,
+  textTerminals,
+  ulistItemStart,
+  unorderedList,
+  unorderedListItem,
+} from "./MadMarkdownParser"
+import { linkCharacter } from "@/Link"
+import { parseTest, testParser } from "@/Test"
+
+
+
+assertEquals = Test.assertEquals
+test = Test.test
+TestError = Test.Error
+
+test(
+  "ulistItemStart",
+  () => do {
+    _ <- testParser(ulistItemStart, " * ", "")
+    return testParser(ulistItemStart, "     * ", "")
+  },
+)
+/*
+test(
+  "olistItemStart",
+  () => do {
+    _ <- testParser(olistItemStart, "1.", "")
+    return testParser(olistItemStart, "2021.", "")
+  },
+)
+// */
+/*
+test(
+  "orderedList",
+  () => do {
+    return testParser(
+      orderedList,
+      ` 1. hey
+ 2. every`,
+      OrderedList([]),
+    )
+  },
+)
+// */
+parseTest("orderedListItem", orderedListItem, " 2. cool", [Text("cool")])
+
+test(
+  "smoke testing",
+  () => do {
+    digits = P.some(P.digit)
+    _ <- testParser(map(always("digimon"), digits), "102932092", "digimon")
+    _ <- testParser(map(always("digimon many"), P.many(P.digit)), "102932092", "digimon many")
+    _ <- testParser(map(always("period!"), P.char('.')), ".", "period!")
+    _ <- testParser(map(always(""), digits), "1", "")
+    // this fails to parse
+    // _ <- testParser(map(always(""), numdot), "1.", "")
+    // _ <- testParser(map(always(""), numdot), "93031.", "")
+    return testParser(map(always(""), digits), "1", "")
+  },
+)
+
+test(
+  "linkCharacter",
+  () => do {
+    charTest = testParser(linkCharacter)
+    _ <- charTest("a", 'a')
+    _ <- charTest("1", '1')
+    _ <- charTest("!", '!')
+    _ <- charTest("#", '#')
+    _ <- charTest("$", '$')
+    _ <- charTest("%", '%')
+    _ <- charTest("&", '&')
+    _ <- charTest("'", '\'')
+    _ <- charTest("*", '*')
+    _ <- charTest("+", '+')
+    _ <- charTest(",", ',')
+    _ <- charTest("-", '-')
+    _ <- charTest(".", '.')
+    _ <- charTest("/", '/')
+    _ <- charTest(":", ':')
+    _ <- charTest(";", ';')
+    _ <- charTest("=", '=')
+    _ <- charTest("?", '?')
+    _ <- charTest("@", '@')
+    _ <- charTest("_", '_')
+    return charTest("~", '~')
+  },
+)
+/*
+parseTest(
+  "orderedList",
+  orderedList,
+  ` 1. Omar
+ 2. Marlo
+ 3. Snoop`,
+  OrderedList([[Text("Hooray")], [Text("Nice")], [Text("Dope")]]),
+)
+*/
+
+parseTest(
+  "unorderedList",
+  unorderedList,
+  ` * a
+ * b
+ * c`,
+  UnorderedList([[Text("a")], [Text("b")], [Text("c")]]),
+)
+
+test(
+  "internalLink",
+  () => do {
+    _ <- testParser(internalLink, "[[xyz|abc]]", InternalLink("abc", "xyz"))
+    return testParser(internalLink, "[[xyz]]", InternalLink("xyz", "xyz"))
+  },
+)
+
+parseTest("block", block, "# hey", H1([Text("hey")]))
+
+parseTest("*italic*", italic, "*Firenze*", Italic("Firenze"))
+parseTest("_italic_", italic, "_Venezia_", Italic("Venezia"))
+parseTest("**bold**", bold, "**asterisk**", Bold("asterisk"))
+parseTest("__bold__", bold, "__underscore__", Bold("underscore"))
+
+parseTest("image", image, "![description](//image.biz)", Image("description", "//image.biz"))
+
+parseTest("link", link, "[madlib](https://madlib.space)", Link("madlib", "https://madlib.space"))
+
+
+parseTest("textTerminals", textTerminals, "*x*", "")
+parseTest("text", text, "hooray", Text("hooray"))
+parseTest("lineReturn", lineReturn, "\n", LineReturn)
+test(
+  "content",
+  () => testParser(
+    content,
+    "text *italic* **bold** `code` ![ref](domain) [link](domain)",
+    [
+      Text("text "),
+      Italic("italic"),
+      Text(" "),
+      Bold("bold"),
+      Text(" "),
+      InlineCode("code"),
+      Text(" "),
+      Image("ref", "domain"),
+      Text(" "),
+      Link("link", "domain"),
+    ],
+  ),
+)
+
+test(
+  "contentWithLineReturn",
+  () => testParser(
+    contentWithLineReturn(Parse.char('^')),
+    "^\n\n",
+    [Text("^"), LineReturn, LineReturn],
+  ),
+)
+
+test("doubleReturnTerminal - newnew", () => testParser(doubleReturnTerminal, "\n\n", "\n\n"))
+test("doubleReturnTerminal - eof", () => testParser(doubleReturnTerminal, "", ""))
+test("doubleReturnTerminal - new", () => testParser(doubleReturnTerminal, "\n", ""))
+
+PARSED_FIXTURE = [
+  H1([Text("this is a fixture")]),
+  H2([Text("sometimes")]),
+  H3([Text("lots")]),
+  H4([Text("of")]),
+  H5([Text("headers")]),
+  H6([Text("are needed")]),
+  Paragraph([
+    Text("Impossibly "),
+    Italic("charming"),
+    Text(" and "),
+    Italic("sophisticated"),
+    Text(". "),
+    Bold("Delightfully"),
+    Text(" jejeune. How "),
+    Bold("droll"),
+    Text("."),
+  ]),
+  Code(
+    "javascript",
+    "\nI once had a dream\n* where\n* I called\n* it\n* javavascurpies\n\n\nmore more more more text\n",
+  ),
+  Blockquote([Text("This is a blockquote.")]),
+  Paragraph([Link("link", "//madlib.biz")]),
+  Paragraph([Text("And another thing&hellip;")]),
+  Paragraph([InternalLink("internal links are magical", "internal links are magical")]),
+  Paragraph([
+    Text("Sometimes you want an "),
+    InternalLink("with different display text", "internal link"),
+    LineReturn,
+    Text("Other times you have text before "),
+    InternalLink("an internal link", "an internal link"),
+    LineReturn,
+  ]),
+]
+
+/*
+test(
+  "markdownParser",
+  () => pipe(
+    File.read,
+    Wish.mapRej(always(TestError("barf"))),
+    chain((FIXTURE) => testParser(markdownParser, FIXTURE, PARSED_FIXTURE)),
+  )("./FIXTURE.md"),
+)
+
+test(
+  "parseMarkdown",
+  () => pipe(
+    File.read,
+    Wish.mapRej(always(TestError("barf"))),
+    chain(
+      pipe(
+        parseMarkdown,
+        where {
+          Left(x) =>
+            pipe(
+              show,
+              TestError,
+              Wish.bad,
+            )(x)
+
+          Right(res) =>
+            assertEquals(res, PARSED_FIXTURE)
+        },
+      ),
+    ),
+  )("./FIXTURE.md"),
+)
+// / *
+test(
+  "parseMarkdown on real example file",
+  () => pipe(
+    File.read,
+    Wish.mapRej(always(TestError("barf"))),
+    chain(
+      pipe(
+        parseMarkdown,
+        where {
+          Left(x) =>
+            pipe(
+              show,
+              TestError,
+              Wish.bad,
+            )(x)
+
+          Right(res) =>
+            assertEquals(res, [])
+        },
+      ),
+    ),
+  )("./notes/Reference/The Fence.md"),
+)
+// */
+
+
+test("inlineCode", () => testParser(inlineCode, "`() => {}`", InlineCode("() => {}")))

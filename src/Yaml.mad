@@ -1,0 +1,209 @@
+import type { Either } from "Either"
+import type { Maybe } from "Maybe"
+import type { Parser } from "Parse"
+
+import { apL } from "Applicative"
+import Dict from "Dictionary"
+import { fromRight } from "Either"
+import { mapLeft } from "Either"
+import {} from "Float"
+import { always, equals, identity } from "Function"
+import { mapL } from "Functor"
+import IO from "IO"
+import { dropWhile, mapMaybe } from "List"
+import { Just, Nothing, fromMaybe } from "Maybe"
+import P from "Parse"
+import String from "String"
+
+import { between } from "@/Combinators"
+import { linkCharacter } from "@/Link"
+import { SPACE, blank, end, maybeMinus, singleReturnTerminal } from "@/Shared"
+
+
+
+// https://help.obsidian.md/Editing+and+formatting/Properties
+// MadMarkdownParser aims to support the YAML that is supported by Obsidian,
+// _not_ the entire YAML spec
+export type YamlValue
+  = YamlString(String)
+  | YamlFloat(Float)
+  | YamlInteger(Integer)
+  | YamlBoolean(Boolean)
+  | YamlLink(String, String)
+  | YamlInternalLink(String, String)
+  | YamlDate(String)
+  | YamlList(List YamlValue)
+
+// key / value
+export type YamlPair = YamlPair(String, YamlValue)
+
+export alias YamlData = List YamlPair
+
+link :: P.Parser YamlValue
+export link = pipe(
+  map(YamlLink),
+  ap(
+    $,
+    between(
+      P.char('('),
+      pipe(
+        P.many,
+        map(String.fromList),
+      )(linkCharacter),
+      P.char(')'),
+    ),
+  ),
+)(
+  between(
+    P.char('['),
+    pipe(
+      P.many,
+      map(String.fromList),
+    )(P.notOneOf([']', '\n'])),
+    P.char(']'),
+  ),
+)
+
+shortInternalLink :: Parser YamlValue
+export shortInternalLink = do {
+  _ <- P.string(`"[[`)
+  ref <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string(`]]"`))
+  _ <- P.string(`]]"`)
+  return pipe(
+    YamlInternalLink(ref),
+    of,
+  )(ref)
+}
+
+internalLinkWithDisplay :: Parser YamlValue
+export internalLinkWithDisplay = do {
+  _ <- P.string(`"[[`)
+  url <- pipe(
+    P.many,
+    map(String.fromList),
+  )(linkCharacter)
+  _ <- P.char('|')
+  ref <- pipe(
+    P.manyTill(P.letter),
+    map(String.fromList),
+  )(P.string(`]]"`))
+  _ <- P.string(`]]"`)
+  return pipe(
+    YamlInternalLink(ref),
+    of,
+  )(url)
+}
+
+internalLink :: P.Parser YamlValue
+export internalLink = P.choice([internalLinkWithDisplay, shortInternalLink])
+
+boolean :: P.Parser YamlValue
+export boolean = pipe(
+  alt(map(always(false), P.symbol("false"))),
+  map(YamlBoolean),
+)(map(always(true), P.symbol("true")))
+
+integer :: P.Parser YamlValue
+export integer = do {
+  minus <- maybeMinus
+  digits <- P.some(P.digit)
+  return pipe(
+    String.fromList,
+    scan,
+    fromMaybe(0),
+    YamlInteger,
+    of,
+  )([...minus, ...digits])
+}
+float :: P.Parser YamlValue
+export float = do {
+  minus <- maybeMinus
+  whole <- P.some(P.digit)
+  dot <- P.char('.')
+  fraction <- P.some(P.digit)
+
+  return pipe(
+    String.fromList,
+    scan,
+    fromMaybe(0),
+    YamlFloat,
+    of,
+  )([...minus, ...whole, dot, ...fraction])
+}
+
+export textTerminals = P.choice([end, P.string("\n")])
+
+export text = map(
+  pipe(
+    String.fromList,
+    String.trim,
+    YamlString,
+  ),
+  P.someTill(P.anyChar, textTerminals),
+)
+
+export yamlSingleContent = P.choice([boolean, link, internalLink, float, integer, text])
+
+export listItem = pipe(
+  chain(always(apL(yamlSingleContent, singleReturnTerminal))),
+)(blank(apL(P.some(SPACE), apL(P.char('-'), P.some(SPACE)))))
+
+export yamlList = pipe(
+  P.some,
+  map(YamlList),
+)(listItem)
+
+newlineYamlList = do {
+  _ <- P.char('\n')
+  list <- yamlList
+  return of(list)
+}
+
+alphanumeric :: Parser String
+alphanumeric = do {
+  firstChar <- P.letter
+  rest <- P.many(P.choice([P.letter, P.digit]))
+  return pipe(
+    String.fromList,
+    of,
+  )([firstChar, ...rest])
+}
+
+
+yamlPair :: P.Parser YamlPair
+export yamlPair = do {
+  key <- P.token(alphanumeric)
+  _ <- P.symbol(":")
+  value <- P.token(P.choice([yamlSingleContent, newlineYamlList]))
+  return pipe(
+    YamlPair(key, $),
+    of,
+  )(value)
+}
+
+export yamlContent = P.many(yamlPair)
+
+yaml :: P.Parser (Dictionary String YamlValue)
+export yaml = do {
+  pairs <- P.many(yamlPair)
+  return pipe(
+    map(where { YamlPair(k, v) => #[k, v] }),
+    Dict.fromList,
+    of,
+  )(pairs)
+}
+
+markYaml :: P.Parser (Dictionary String YamlValue)
+export markYaml = do {
+  _ <- P.symbol("---")
+  pairs <- P.many(yamlPair)
+  _ <- P.symbol("---")
+  return pipe(
+    map(where { YamlPair(k, v) => #[k, v] }),
+    Dict.fromList,
+    of,
+  )(pairs)
+}
