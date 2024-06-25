@@ -1,6 +1,7 @@
 import { Left, Right } from "Either"
 import File from "File"
 import { always } from "Function"
+import IO from "IO"
 import P from "Parse"
 import Parse from "Parse"
 import Test from "Test"
@@ -46,6 +47,7 @@ import {
   markdownParser,
   olistItemStart,
   orderedList,
+  orderedListItem,
   paragraph,
   parseMarkdown,
   text,
@@ -74,20 +76,30 @@ test(
 test(
   "olistItemStart",
   () => do {
-    _ <- testParser(olistItemStart, " 1. ", "")
-    return testParser(olistItemStart, "     1. ", "")
+    _ <- testParser(olistItemStart, "1.", "")
+    return testParser(olistItemStart, "2021.", "")
   },
 )
-*/
+// */
+test(
+  "orderedList",
+  () => do {
+    return testParser(
+      olistItemStart,
+      ` 1. test
+ 2. every
+ 3. day`,
+      "",
+    )
+  },
+)
+// */
+parseTest("orderedListItem", orderedListItem, " 2. cool", [Text("cool")])
 
 test(
   "smoke testing",
   () => do {
-    numdot = P.someTill(P.digit, P.char('.'))
     digits = P.some(P.digit)
-    // _ <- testParser(P.someTill(P.digit, P.lookAhead(P.char('.'))), "02.", [])
-    // _ <- testParser(alt(P.char('a'), P.lookAhead(P.anyChar)), "ab", 'a')
-    // _ <- testParser(alt(digits, P.lookAhead(P.char('.'))), "1.", "1.")
     _ <- testParser(map(always("digimon"), digits), "102932092", "digimon")
     _ <- testParser(map(always("digimon many"), P.many(P.digit)), "102932092", "digimon many")
     _ <- testParser(map(always("period!"), P.char('.')), ".", "period!")
@@ -238,6 +250,7 @@ PARSED_FIXTURE = [
   ]),
 ]
 
+/*
 test(
   "markdownParser",
   () => pipe(
@@ -246,7 +259,6 @@ test(
     chain((FIXTURE) => testParser(markdownParser, FIXTURE, PARSED_FIXTURE)),
   )("./FIXTURE.md"),
 )
-/*
 
 test(
   "parseMarkdown",

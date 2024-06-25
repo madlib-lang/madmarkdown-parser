@@ -8,6 +8,7 @@ import { apL } from "Applicative"
 import { mapLeft } from "Either"
 import { always, equals, identity } from "Function"
 import { mapL } from "Functor"
+import IO from "IO"
 import { dropWhile, mapMaybe } from "List"
 import { Just, Nothing } from "Maybe"
 import P from "Parse"
@@ -221,11 +222,11 @@ yaml = do {
   )(data)
 }
 
+contentPart :: P.Parser ContentPart
+contentPart = P.choice([yaml, internalLink, bold, italic, inlineCode, image, link, text])
+
 content :: P.Parser Content
-export content = pipe(
-  P.choice,
-  P.many,
-)([yaml, internalLink, bold, italic, inlineCode, image, link, text])
+export content = P.many(contentPart)
 
 coerceEmpty :: Maybe a -> P.Parser ContentPart
 export coerceEmpty = pipe(
@@ -306,18 +307,46 @@ export listItemStart = (starter) => pipe(
   chain(always(apL(content, singleReturnTerminal))),
 )(starter)
 
-export olistItemStart = blank(
-  apL(P.many(SPACE), apL(P.someTill(P.digit, P.char('.')), P.some(SPACE))),
-)
+// export olistItemStart = blank(
+//   apL(P.many(SPACE), apL(P.someTill(P.digit, P.lookAhead(P.char('.'))), P.some(SPACE))),
+// )
 
-orderedListItem :: P.Parser Content
-export orderedListItem = listItemStart(olistItemStart)
+export olistItemStart = do {
+  space <- P.some(P.char(' '))
+  digits <- P.token(P.some(P.digit))
+  dot <- P.char('.')
+  return pipe(
+    of,
+  )("")
+}
 
-orderedList :: P.Parser Block
+// orderedListItem :: P.Parser Content
+// export orderedListItem = listItemStart(olistItemStart)
+
+/*
 export orderedList = pipe(
   P.some,
   map(OrderedList),
 )(orderedListItem)
+*/
+
+export orderedListItem = do {
+  _ <- P.some(P.char(' ')) <|> pure([])
+  _ <- P.token(P.some(P.digit))
+  _ <- P.symbol(".") <|> pure("")
+  lineContent <- P.token(content)
+  return pipe(
+    of,
+  )(lineContent)
+}
+export orderedList = do {
+  items <- P.sepBy(orderedListItem, P.char('\n'))
+  IO.pTrace("ITEMS!", items)
+  return pipe(
+    OrderedList,
+    of,
+  )([...items])
+}
 
 export ulistItemStart = blank(apL(P.many(SPACE), apL(P.oneOf(['*', '-', '+']), P.some(SPACE))))
 
