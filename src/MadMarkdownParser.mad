@@ -330,17 +330,20 @@ export orderedList = pipe(
 )(orderedListItem)
 */
 
+// the crap in olistItemStart above squeezes out the spaces
+// so we need to do that in the morning
 export orderedListItem = do {
   _ <- P.some(P.char(' ')) <|> pure([])
   _ <- P.token(P.some(P.digit))
   _ <- P.symbol(".") <|> pure("")
   lineContent <- P.token(content)
+  _ <- P.symbol("\n") <|> pure("")
   return pipe(
     of,
   )(lineContent)
 }
 export orderedList = do {
-  items <- P.sepBy(orderedListItem, P.char('\n'))
+  items <- P.sepBy(orderedListItem, P.token(P.char('\n')))
   IO.pTrace("ITEMS!", items)
   return pipe(
     OrderedList,

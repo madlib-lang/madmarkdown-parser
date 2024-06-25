@@ -147,9 +147,20 @@ export text = map(
 
 export yamlSingleContent = P.choice([boolean, link, internalLink, float, integer, text])
 
-export list = pipe(
+export listItem = pipe(
   chain(always(apL(yamlSingleContent, singleReturnTerminal))),
-)(blank(apL(P.many(SPACE), apL(P.char('-'), P.some(SPACE)))))
+)(blank(apL(P.some(SPACE), apL(P.char('-'), P.some(SPACE)))))
+
+export yamlList = pipe(
+  P.some,
+  map(YamlList),
+)(listItem)
+
+newlineYamlList = do {
+  _ <- P.char('\n')
+  list <- yamlList
+  return of(list)
+}
 
 alphanumeric :: Parser String
 alphanumeric = do {
@@ -166,7 +177,7 @@ yamlPair :: P.Parser YamlPair
 export yamlPair = do {
   key <- P.token(alphanumeric)
   _ <- P.symbol(":")
-  value <- P.token(yamlSingleContent)
+  value <- P.token(P.choice([yamlSingleContent, newlineYamlList]))
   return pipe(
     YamlPair(key, $),
     of,
@@ -174,6 +185,16 @@ export yamlPair = do {
 }
 
 export yamlContent = P.many(yamlPair)
+
+yaml :: P.Parser (Dictionary String YamlValue)
+export yaml = do {
+  pairs <- P.many(yamlPair)
+  return pipe(
+    map(where { YamlPair(k, v) => #[k, v] }),
+    Dict.fromList,
+    of,
+  )(pairs)
+}
 
 markYaml :: P.Parser (Dictionary String YamlValue)
 export markYaml = do {

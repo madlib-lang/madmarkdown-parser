@@ -1,3 +1,4 @@
+import Dict from "Dictionary"
 import { Left, Right } from "Either"
 import File from "File"
 import { always } from "Function"
@@ -19,6 +20,7 @@ import {
   YamlInteger,
   YamlInternalLink,
   YamlLink,
+  YamlList,
   YamlPair,
   YamlString,
   boolean,
@@ -28,7 +30,9 @@ import {
   internalLinkWithDisplay,
   link,
   text,
+  yaml,
   yamlContent,
+  yamlList,
   yamlPair,
   yamlSingleContent,
 } from "@/Yaml"
@@ -52,6 +56,63 @@ test(
     return run("[website](https://website.biz)", YamlLink("website", "https://website.biz"))
   },
 )
+
+parseTest(
+  "yamlList",
+  yamlList,
+  ` - a
+ - b
+ - c`,
+  YamlList([YamlString("a"), YamlString("b"), YamlString("c")]),
+)
+test(
+  "yaml",
+  () => do {
+    FIRST_CASE = `a: yo
+b: true
+c: false
+d: 123850.23
+e: 240
+f: [link](site)
+g: "[[hoho|yoyo]]"`
+    parseYaml = testParser(yaml)
+    return parseYaml(
+      FIRST_CASE,
+      {{
+        "a": YamlString("yo"),
+        "b": YamlBoolean(true),
+        "c": YamlBoolean(false),
+        "d": YamlFloat(123850.23),
+        "e": YamlInteger(240),
+        "f": YamlLink("link", "site"),
+        "g": YamlInternalLink("yoyo", "hoho"),
+      }},
+    )
+    /*
+        return parseYaml(
+          FIRST_CASE
+            ++ `
+    h:
+     - i
+     - j
+     - k`,
+          {{
+            "a": YamlString("yo"),
+            "b": YamlBoolean(true),
+            "c": YamlBoolean(false),
+            "d": YamlFloat(123850.23),
+            "e": YamlInteger(240),
+            "f": YamlLink("link", "site"),
+            "g": YamlInternalLink("yoyo", "hoho"),
+            "h": YamlList([YamlString("i"), YamlString("j"), YamlString("k")]),
+          }},
+        )
+        */
+  },
+)
+
+// parseFile("./YAML_FIXTURE.yaml", "yaml fixture", yaml, {{}})
+
 test(
   "text",
   () => do {

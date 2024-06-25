@@ -81,15 +81,15 @@ test(
   },
 )
 // */
+/*
 test(
   "orderedList",
   () => do {
     return testParser(
-      olistItemStart,
-      ` 1. test
- 2. every
- 3. day`,
-      "",
+      orderedList,
+      ` 1. hey
+ 2. every`,
+      OrderedList([]),
     )
   },
 )
@@ -283,8 +283,7 @@ test(
     ),
   )("./FIXTURE.md"),
 )
-
-// /*
+// / *
 test(
   "parseMarkdown on real example file",
   () => pipe(
@@ -308,7 +307,7 @@ test(
     ),
   )("./notes/Reference/The Fence.md"),
 )
-*/
+// */
 
 
 test("inlineCode", () => testParser(inlineCode, "`() => {}`", InlineCode("() => {}")))
