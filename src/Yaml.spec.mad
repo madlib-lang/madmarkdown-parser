@@ -29,6 +29,7 @@ import {
   internalLink,
   internalLinkWithDisplay,
   link,
+  newlineYamlList,
   text,
   yaml,
   yamlContent,
@@ -65,6 +66,17 @@ parseTest(
  - c`,
   YamlList([YamlString("a"), YamlString("b"), YamlString("c")]),
 )
+
+parseTest(
+  "newlineYamlList",
+  newlineYamlList,
+  `
+ - a
+ - b
+ - c`,
+  YamlList([YamlString("a"), YamlString("b"), YamlString("c")]),
+)
+
 test(
   "yaml",
   () => do {
@@ -76,7 +88,7 @@ e: 240
 f: [link](site)
 g: "[[hoho|yoyo]]"`
     parseYaml = testParser(yaml)
-    return parseYaml(
+    _ <- parseYaml(
       FIRST_CASE,
       {{
         "a": YamlString("yo"),
@@ -88,26 +100,11 @@ g: "[[hoho|yoyo]]"`
         "g": YamlInternalLink("yoyo", "hoho"),
       }},
     )
-    /*
-        return parseYaml(
-          FIRST_CASE
-            ++ `
-    h:
-     - i
-     - j
-     - k`,
-          {{
-            "a": YamlString("yo"),
-            "b": YamlBoolean(true),
-            "c": YamlBoolean(false),
-            "d": YamlFloat(123850.23),
-            "e": YamlInteger(240),
-            "f": YamlLink("link", "site"),
-            "g": YamlInternalLink("yoyo", "hoho"),
-            "h": YamlList([YamlString("i"), YamlString("j"), YamlString("k")]),
-          }},
-        )
-        */
+    return parseYaml(
+      `h:
+ - i`,
+      {{ "h": YamlList([YamlString("i")]) }},
+    )
   },
 )
 

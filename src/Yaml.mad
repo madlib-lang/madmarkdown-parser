@@ -147,16 +147,19 @@ export text = map(
 
 export yamlSingleContent = P.choice([boolean, link, internalLink, float, integer, text])
 
-export listItem = pipe(
-  chain(always(apL(yamlSingleContent, singleReturnTerminal))),
-)(blank(apL(P.some(SPACE), apL(P.char('-'), P.some(SPACE)))))
 
+export ulistItemStart = blank(apL(P.many(SPACE), apL(P.char('-'), P.some(SPACE))))
+
+export listItem = chain(always(apL(yamlSingleContent, singleReturnTerminal)), ulistItemStart)
+
+yamlList :: P.Parser YamlValue
 export yamlList = pipe(
   P.some,
   map(YamlList),
 )(listItem)
 
-newlineYamlList = do {
+newlineYamlList :: P.Parser YamlValue
+export newlineYamlList = do {
   _ <- P.char('\n')
   list <- yamlList
   return of(list)
@@ -177,7 +180,7 @@ yamlPair :: P.Parser YamlPair
 export yamlPair = do {
   key <- P.token(alphanumeric)
   _ <- P.symbol(":")
-  value <- P.token(P.choice([yamlSingleContent, newlineYamlList]))
+  value <- P.token(P.choice([newlineYamlList, yamlSingleContent]))
   return pipe(
     YamlPair(key, $),
     of,
@@ -188,7 +191,7 @@ export yamlContent = P.many(yamlPair)
 
 yaml :: P.Parser (Dictionary String YamlValue)
 export yaml = do {
-  pairs <- P.many(yamlPair)
+  pairs <- P.sepBy(yamlPair, P.char('\n'))
   return pipe(
     map(where { YamlPair(k, v) => #[k, v] }),
     Dict.fromList,

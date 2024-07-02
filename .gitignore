@@ -7,3 +7,4 @@ src/Example.mad
 .DS_Store
 .coverage
 .tests
+.vscode
